@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Environments
+.env
+.env.*
+!.env.example
+
+# Uploads / local runtime data
+uploads/
+
+# Node / frontend, for later phases
+node_modules/
+.next/
+out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
