@@ -10,6 +10,7 @@ from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.models import Document, DocumentStatus
 from app.schemas.document import DocumentResponse
+from app.schemas.errors import ErrorResponse
 from app.services import pdf_extraction
 from app.services.ingestion import process_document
 
@@ -18,8 +19,21 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 
+_UPLOAD_ERRORS: dict[int | str, dict[str, type[ErrorResponse]]] = {
+    400: {"model": ErrorResponse},
+    413: {"model": ErrorResponse},
+    415: {"model": ErrorResponse},
+    422: {"model": ErrorResponse},
+}
+_NOT_FOUND_ERROR: dict[int | str, dict[str, type[ErrorResponse]]] = {404: {"model": ErrorResponse}}
 
-@router.post("", response_model=DocumentResponse, status_code=status.HTTP_202_ACCEPTED)
+
+@router.post(
+    "",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=_UPLOAD_ERRORS,
+)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile,
@@ -72,9 +86,24 @@ async def list_documents(session: DbSession) -> Sequence[Document]:
     return result.scalars().all()
 
 
-@router.get("/{document_id}", response_model=DocumentResponse)
+@router.get("/{document_id}", response_model=DocumentResponse, responses=_NOT_FOUND_ERROR)
 async def get_document(document_id: uuid.UUID, session: DbSession) -> Document:
     document = await session.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NOT_FOUND_ERROR,
+)
+async def delete_document(document_id: uuid.UUID, session: DbSession) -> None:
+    document = await session.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    # Chunks are removed by the FK ON DELETE CASCADE (passive_deletes=True).
+    await session.delete(document)
+    await session.commit()

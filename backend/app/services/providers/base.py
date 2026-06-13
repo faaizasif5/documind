@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
 
@@ -16,4 +17,16 @@ class EmbeddingProvider(Protocol):
 
     async def embed_query(self, text: str) -> list[float]:
         """Embed a single search query."""
+        ...
+
+
+@runtime_checkable
+class CompletionProvider(Protocol):
+    """Provider-agnostic streaming completion interface.
+
+    Yields plain text deltas so callers don't depend on a provider's chunk shape.
+    """
+
+    def stream_completion(self, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
+        """Stream the model's answer as incremental text fragments."""
         ...

@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import AsyncIterator
 from typing import Any, cast
 
 from google import genai
@@ -55,3 +56,24 @@ class GeminiEmbeddingProvider:
     async def embed_query(self, text: str) -> list[float]:
         embeddings = await self._embed([text], task_type="RETRIEVAL_QUERY")
         return embeddings[0]
+
+
+class GeminiCompletionProvider:
+    """CompletionProvider backed by Google's Gemini generate-content API (streaming)."""
+
+    def __init__(self, settings: Settings) -> None:
+        if not settings.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+        self._client = genai.Client(api_key=settings.gemini_api_key)
+        self._model = settings.gemini_completion_model
+
+    async def stream_completion(self, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
+        config = types.GenerateContentConfig(system_instruction=system_prompt)
+        stream = await self._client.aio.models.generate_content_stream(
+            model=self._model,
+            contents=cast(Any, user_prompt),
+            config=config,
+        )
+        async for chunk in stream:
+            if chunk.text:
+                yield chunk.text
