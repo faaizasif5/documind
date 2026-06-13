@@ -18,7 +18,11 @@ class Settings(BaseSettings):
     backend_cors_origins: str = "http://localhost:3000"
 
     database_url: str
+    # Direct/session-pooler URL used only by Alembic migrations (DDL + prepared
+    # statements). Falls back to database_url when unset.
+    database_migration_url: str | None = None
     openai_api_key: str
+    embedding_dim: int = 1536
     upload_max_bytes: int = 10 * 1024 * 1024
 
     @property
