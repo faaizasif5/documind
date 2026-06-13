@@ -16,7 +16,6 @@ venv/
 # Uploads / local runtime data
 uploads/
 
-# Node / frontend, for later phases
 node_modules/
 .next/
 out/
@@ -25,3 +24,4 @@ out/
 .DS_Store
 Thumbs.db
 .vscode/
+CONTEXT.md
