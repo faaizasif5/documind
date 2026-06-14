@@ -5,6 +5,7 @@ PDFs, and the backend extracts, chunks, and embeds their content into a vector s
 questions are then answered by an LLM using the most relevant chunks, with **streamed,
 source-grounded citations**.
 
+**Live demo:** [documind-eight-alpha.vercel.app](https://documind-eight-alpha.vercel.app/)
 ## Architecture
 
 ```text

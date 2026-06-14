@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { ChatView } from "@/components/chat-view";
 import { DocumentsView } from "@/components/documents-view";
-import { SettingsView } from "@/components/settings-view";
 import { Sidebar } from "@/components/sidebar";
 import { SidebarRail } from "@/components/sidebar-rail";
 import { TopBar } from "@/components/top-bar";
@@ -19,10 +18,6 @@ const VIEW_HEADERS: Record<AppView, { title: string; subtitle: string }> = {
   documents: {
     title: "Documents",
     subtitle: "Upload PDFs and manage your document library.",
-  },
-  settings: {
-    title: "Settings",
-    subtitle: "Connection details for this single-user demo.",
   },
 };
 
@@ -78,11 +73,6 @@ export function AppShell() {
           {view === "documents" && (
             <div className="h-full overflow-y-auto">
               <DocumentsView />
-            </div>
-          )}
-          {view === "settings" && (
-            <div className="h-full overflow-y-auto">
-              <SettingsView />
             </div>
           )}
         </main>
