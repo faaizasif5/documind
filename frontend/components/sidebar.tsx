@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ChevronsLeft,
-  FileText,
-  MessageSquare,
-  Plus,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { ChevronsLeft, FileText, MessageSquare, Plus, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { SidebarDocuments } from "@/components/sidebar-documents";
@@ -20,7 +13,6 @@ import { cn } from "@/lib/utils";
 export const NAV_ITEMS: { id: AppView; label: string; icon: LucideIcon }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "documents", label: "Documents", icon: FileText },
-  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
