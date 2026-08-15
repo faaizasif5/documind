@@ -19,6 +19,8 @@ import {
   MARKETING_FEATURES,
   MARKETING_STATS,
   NAV_LINKS,
+  PRIVACY_TAGLINE,
+  PRIVACY_TRUST_POINTS,
 } from "@/lib/marketing-content";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +109,9 @@ export function MarketingLanding() {
               <Reveal delay={300}>
                 <p className="mt-4 text-xs text-muted-foreground">
                   Free to try · Google sign-in · No credit card
+                </p>
+                <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-muted-foreground/90">
+                  {PRIVACY_TAGLINE}
                 </p>
               </Reveal>
             </div>
@@ -213,37 +218,35 @@ export function MarketingLanding() {
 
         <section className="px-5 py-20 sm:px-8 sm:py-24">
           <Reveal className="mx-auto max-w-7xl">
-            <div className="relative isolate overflow-hidden rounded-3xl bg-foreground px-6 py-14 text-background sm:px-12">
-              <div className="pointer-events-none absolute -right-16 -top-24 -z-10 size-72 rounded-full bg-primary/30 blur-3xl motion-safe:animate-gradient-drift" />
+            <div className="relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-14 sm:px-12">
+              <div className="pointer-events-none absolute -right-16 -top-24 -z-10 size-72 rounded-full bg-primary/20 blur-3xl motion-safe:animate-gradient-drift" />
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_bottom_left,hsl(var(--primary)/0.08),transparent_55%)]" />
               <div className="grid items-center gap-8 md:grid-cols-[1fr_auto]">
                 <div>
-                  <div className="mb-4 flex items-center gap-2 text-sm text-background/70">
-                    <ShieldCheck className="size-4" />
+                  <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+                    <ShieldCheck className="size-4 text-primary" />
                     Private by default
                   </div>
-                  <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                    Your document workspace is yours.
+                  <h2 className="text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    Ask from your PDFs — without keeping the files.
                   </h2>
-                  <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-background/70">
-                    <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="size-4" />
-                      Per-user isolation
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="size-4" />
-                      Secure Google sign-in
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <CheckCircle2 className="size-4" />
-                      Delete anytime
-                    </span>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+                    {PRIVACY_TAGLINE}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                    {PRIVACY_TRUST_POINTS.map((point) => (
+                      <span key={point} className="inline-flex items-center gap-2">
+                        <CheckCircle2 className="size-4 shrink-0 text-primary" />
+                        {point}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <Link
                   href="/login"
                   className={cn(
-                    buttonVariants({ variant: "secondary", size: "lg" }),
-                    "group h-11 rounded-xl transition-transform hover:-translate-y-0.5",
+                    buttonVariants({ size: "lg" }),
+                    "group h-11 rounded-xl shadow-lg shadow-primary/20 transition-transform hover:-translate-y-0.5",
                   )}
                 >
                   Try DocuMind
