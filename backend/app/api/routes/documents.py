@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFi
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import CurrentUserDep
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.models import Document, DocumentStatus
@@ -19,13 +20,29 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 
+_AUTH_ERROR: dict[int | str, dict[str, type[ErrorResponse]]] = {401: {"model": ErrorResponse}}
+_NOT_FOUND_ERROR: dict[int | str, dict[str, type[ErrorResponse]]] = {
+    401: {"model": ErrorResponse},
+    404: {"model": ErrorResponse},
+}
 _UPLOAD_ERRORS: dict[int | str, dict[str, type[ErrorResponse]]] = {
     400: {"model": ErrorResponse},
+    401: {"model": ErrorResponse},
     413: {"model": ErrorResponse},
     415: {"model": ErrorResponse},
     422: {"model": ErrorResponse},
 }
-_NOT_FOUND_ERROR: dict[int | str, dict[str, type[ErrorResponse]]] = {404: {"model": ErrorResponse}}
+
+
+def _owned_or_404(document: Document | None, user_id: uuid.UUID) -> Document:
+    """Return the document only if it belongs to ``user_id``; otherwise 404.
+
+    Cross-user access intentionally looks identical to a missing document so we
+    do not leak existence across tenants.
+    """
+    if document is None or document.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    return document
 
 
 @router.post(
@@ -39,6 +56,7 @@ async def upload_document(
     file: UploadFile,
     session: DbSession,
     settings: AppSettings,
+    user: CurrentUserDep,
 ) -> Document:
     if file.content_type != "application/pdf":
         raise HTTPException(
@@ -66,6 +84,7 @@ async def upload_document(
         ) from exc
 
     document = Document(
+        user_id=user.id,
         filename=file.filename or "untitled.pdf",
         file_size=len(pdf_bytes),
         page_count=page_count,
@@ -80,18 +99,30 @@ async def upload_document(
     return document
 
 
-@router.get("", response_model=list[DocumentResponse])
-async def list_documents(session: DbSession) -> Sequence[Document]:
-    result = await session.execute(select(Document).order_by(Document.created_at.desc()))
+@router.get(
+    "",
+    response_model=list[DocumentResponse],
+    responses=_AUTH_ERROR,
+)
+async def list_documents(session: DbSession, user: CurrentUserDep) -> Sequence[Document]:
+    result = await session.execute(
+        select(Document).where(Document.user_id == user.id).order_by(Document.created_at.desc())
+    )
     return result.scalars().all()
 
 
-@router.get("/{document_id}", response_model=DocumentResponse, responses=_NOT_FOUND_ERROR)
-async def get_document(document_id: uuid.UUID, session: DbSession) -> Document:
+@router.get(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    responses=_NOT_FOUND_ERROR,
+)
+async def get_document(
+    document_id: uuid.UUID,
+    session: DbSession,
+    user: CurrentUserDep,
+) -> Document:
     document = await session.get(Document, document_id)
-    if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    return document
+    return _owned_or_404(document, user.id)
 
 
 @router.delete(
@@ -99,11 +130,14 @@ async def get_document(document_id: uuid.UUID, session: DbSession) -> Document:
     status_code=status.HTTP_204_NO_CONTENT,
     responses=_NOT_FOUND_ERROR,
 )
-async def delete_document(document_id: uuid.UUID, session: DbSession) -> None:
+async def delete_document(
+    document_id: uuid.UUID,
+    session: DbSession,
+    user: CurrentUserDep,
+) -> None:
     document = await session.get(Document, document_id)
-    if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    owned = _owned_or_404(document, user.id)
 
     # Chunks are removed by the FK ON DELETE CASCADE (passive_deletes=True).
-    await session.delete(document)
+    await session.delete(owned)
     await session.commit()

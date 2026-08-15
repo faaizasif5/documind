@@ -2,13 +2,13 @@
 
 import { Loader2, UploadCloud } from "lucide-react";
 
+import { UploadProgress } from "@/components/upload-progress";
 import { useUpload } from "@/hooks/use-upload";
 import { cn } from "@/lib/utils";
 
 export function UploadDropzone() {
-  const { getRootProps, getInputProps, isDragActive, isPending } = useUpload({
-    enableDrag: true,
-  });
+  const { getRootProps, getInputProps, isDragActive, isPending, progress, maxBytes } =
+    useUpload({ enableDrag: true });
 
   return (
     <div
@@ -30,7 +30,10 @@ export function UploadDropzone() {
       <p className="mt-3 text-sm font-medium">
         {isDragActive ? "Drop the PDF here" : "Drag a PDF here, or click to browse"}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">PDF only · up to 10 MB</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        PDF only · up to {Math.round(maxBytes / (1024 * 1024))} MB
+      </p>
+      {isPending && <UploadProgress percent={progress} className="mt-4 w-full max-w-xs" />}
     </div>
   );
 }

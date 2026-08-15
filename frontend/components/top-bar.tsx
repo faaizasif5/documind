@@ -5,16 +5,19 @@ import { Menu } from "lucide-react";
 import { HealthBadge } from "@/components/health-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/user-menu";
+import { ViewTabs } from "@/components/view-tabs";
+import type { AppView } from "@/lib/views";
 
 interface TopBarProps {
-  title: string;
-  subtitle?: string;
+  view: AppView;
+  onSelectView: (view: AppView) => void;
   onOpenSheet: () => void;
 }
 
-export function TopBar({ title, subtitle, onOpenSheet }: TopBarProps) {
+export function TopBar({ view, onSelectView, onOpenSheet }: TopBarProps) {
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 sm:px-6">
+    <header className="z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-xl sm:px-6">
       <Button
         variant="ghost"
         size="icon"
@@ -25,20 +28,12 @@ export function TopBar({ title, subtitle, onOpenSheet }: TopBarProps) {
         <Menu className="size-5" />
       </Button>
 
-      <div className="min-w-0">
-        <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="hidden truncate text-sm text-muted-foreground sm:block">
-            {subtitle}
-          </p>
-        )}
-      </div>
+      <ViewTabs view={view} onSelectView={onSelectView} />
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <HealthBadge />
         <ThemeToggle />
+        <UserMenu />
       </div>
     </header>
   );

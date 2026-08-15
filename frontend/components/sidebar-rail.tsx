@@ -1,27 +1,19 @@
 "use client";
 
-import { ChevronsRight, Plus, Sparkles } from "lucide-react";
+import { ChevronsRight, Plus } from "lucide-react";
 
-import { NAV_ITEMS } from "@/components/sidebar";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { authUserLabel, useAuthUser } from "@/hooks/use-auth-user";
 import { useUpload } from "@/hooks/use-upload";
-import type { AppView } from "@/lib/views";
-import { cn } from "@/lib/utils";
 
-interface SidebarRailProps {
-  view: AppView;
-  onSelectView: (view: AppView) => void;
-  onExpand: () => void;
-}
-
-export function SidebarRail({ view, onSelectView, onExpand }: SidebarRailProps) {
+export function SidebarRail({ onExpand }: { onExpand: () => void }) {
   const { getInputProps, open, isPending } = useUpload();
+  const user = useAuthUser();
 
   return (
-    <div className="flex h-full w-16 flex-col items-center gap-1 bg-background py-4">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 via-indigo-500 to-blue-500 text-white shadow-sm">
-        <Sparkles className="size-5" />
-      </div>
+    <div className="flex h-full w-16 flex-col items-center gap-1 bg-muted/25 py-4">
+      <BrandMark compact />
 
       <Button
         variant="ghost"
@@ -33,30 +25,6 @@ export function SidebarRail({ view, onSelectView, onExpand }: SidebarRailProps) 
       >
         <ChevronsRight className="size-4" />
       </Button>
-
-      <nav className="mt-3 flex flex-col items-center gap-1">
-        {NAV_ITEMS.map((item) => {
-          const active = view === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelectView(item.id)}
-              aria-label={item.label}
-              aria-current={active ? "page" : undefined}
-              title={item.label}
-              className={cn(
-                "flex size-10 items-center justify-center rounded-lg transition-colors",
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-              )}
-            >
-              <item.icon className="size-5" />
-            </button>
-          );
-        })}
-      </nav>
 
       <input {...getInputProps()} />
       <Button
@@ -70,9 +38,14 @@ export function SidebarRail({ view, onSelectView, onExpand }: SidebarRailProps) 
         <Plus className="size-5" />
       </Button>
 
-      <div className="mt-auto flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-        U
-      </div>
+      {user && (
+        <div
+          title={authUserLabel(user)}
+          className="mt-auto grid size-9 place-items-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary"
+        >
+          {authUserLabel(user).slice(0, 1)}
+        </div>
+      )}
     </div>
   );
 }
