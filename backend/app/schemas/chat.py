@@ -10,6 +10,9 @@ class ChatRequest(BaseModel):
 
 
 class Source(BaseModel):
+    """A citation the answer can reference; `number` matches the inline [Source N] marker."""
+
+    number: int = Field(ge=1)
     document_id: uuid.UUID
     filename: str
     page_number: int

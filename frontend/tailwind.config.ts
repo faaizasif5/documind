@@ -49,6 +49,35 @@ const config: Config = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
       },
+      keyframes: {
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(1.25rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-0.5rem)" },
+        },
+        "pulse-ring": {
+          "0%": { opacity: "0.55", transform: "scale(0.9)" },
+          "70%, 100%": { opacity: "0", transform: "scale(1.6)" },
+        },
+        blink: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "gradient-drift": {
+          "0%, 100%": { transform: "translate3d(0, 0, 0) scale(1)" },
+          "50%": { transform: "translate3d(2rem, -1.5rem, 0) scale(1.08)" },
+        },
+      },
+      animation: {
+        "fade-up": "fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
+        float: "float 6s ease-in-out infinite",
+        "pulse-ring": "pulse-ring 2s ease-out infinite",
+        blink: "blink 1s step-end infinite",
+        "gradient-drift": "gradient-drift 18s ease-in-out infinite",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

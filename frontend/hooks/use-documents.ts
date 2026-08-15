@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
   deleteDocument,
@@ -31,14 +32,19 @@ export function useDocuments() {
 
 export function useUploadDocument() {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (file: File) => uploadDocument(file),
+  const [progress, setProgress] = useState(0);
+
+  const mutation = useMutation({
+    mutationFn: (file: File) => uploadDocument(file, setProgress),
+    onMutate: () => setProgress(0),
     onSuccess: (created: DocumentResponse) => {
       queryClient.setQueryData<DocumentResponse[]>(queryKeys.documents, (prev) =>
         prev ? [created, ...prev] : [created],
       );
     },
   });
+
+  return { ...mutation, progress };
 }
 
 export function useDeleteDocument() {

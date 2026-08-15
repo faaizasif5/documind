@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Loader2, MoreVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { DocumentIcon } from "@/components/document-icon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +22,9 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
 };
 
 const STATUS_COLOR: Record<DocumentStatus, string> = {
-  ready: "text-emerald-600",
-  processing: "text-amber-600",
-  failed: "text-red-600",
+  ready: "text-emerald-600 dark:text-emerald-400",
+  processing: "text-amber-600 dark:text-amber-400",
+  failed: "text-red-600 dark:text-red-400",
 };
 
 function DocumentCard({ document }: { document: DocumentResponse }) {
@@ -31,9 +32,7 @@ function DocumentCard({ document }: { document: DocumentResponse }) {
 
   return (
     <div className="group flex items-center gap-3 rounded-xl border border-transparent p-2.5 transition-colors hover:border-border hover:bg-accent/40">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-500">
-        <FileText className="size-4" />
-      </div>
+      <DocumentIcon />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{document.filename}</p>
         <p className="flex items-center gap-1.5 text-xs">

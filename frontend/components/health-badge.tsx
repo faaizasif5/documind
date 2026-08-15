@@ -7,17 +7,25 @@ export function HealthBadge() {
   const { data, isError, isLoading } = useHealth();
 
   const state = isLoading
-    ? { dot: "bg-muted-foreground", label: "Checking…" }
+    ? { dot: "bg-muted-foreground", label: "Checking…", healthy: false }
     : isError || !data
-      ? { dot: "bg-red-500", label: "Offline" }
-      : { dot: "bg-emerald-500", label: "Healthy" };
+      ? { dot: "bg-destructive", label: "Offline", healthy: false }
+      : { dot: "bg-emerald-500", label: "Healthy", healthy: true };
 
   return (
-    <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+    <div
+      title={`Backend ${state.label}`}
+      className={cn(
+        "flex items-center gap-2 rounded-full border px-2.5 py-1",
+        state.healthy && "border-transparent",
+      )}
+    >
       <span className={cn("size-2 rounded-full", state.dot)} />
-      <span className="text-xs font-medium leading-none">
-        <span className="text-muted-foreground">Backend</span> {state.label}
-      </span>
+      {/* Only name the state when it needs attention; healthy is just a dot. */}
+      {!state.healthy && (
+        <span className="text-xs font-medium leading-none">{state.label}</span>
+      )}
+      <span className="sr-only">Backend {state.label}</span>
     </div>
   );
 }

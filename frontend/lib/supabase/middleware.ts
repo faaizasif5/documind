@@ -27,7 +27,7 @@ function redirectWithCookies(
   return copyCookies(sessionResponse, NextResponse.redirect(url));
 }
 
-/** Refresh the session and protect the product UI at `/`. */
+/** Refresh auth cookies and apply session-aware navigation redirects. */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getSupabaseEnv();
@@ -54,17 +54,11 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname, search } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
   // Legacy /app route → product lives at `/`.
   if (pathname === "/app" || pathname.startsWith("/app/")) {
     return redirectWithCookies(request, response, "/");
-  }
-
-  if (!user && pathname === "/") {
-    return redirectWithCookies(request, response, "/login", {
-      next: `${pathname}${search}` || "/",
-    });
   }
 
   if (user && pathname === "/login") {

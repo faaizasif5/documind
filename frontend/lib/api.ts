@@ -20,19 +20,25 @@ export function apiUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
-  let code = "error";
-  let message = response.statusText || "Request failed";
+function parseErrorBody(
+  raw: string,
+): { code: string; message: string } | null {
   try {
-    const body = (await response.json()) as Partial<ApiErrorBody>;
-    if (body.error) {
-      code = body.error.code;
-      message = body.error.message;
-    }
+    const body = JSON.parse(raw) as Partial<ApiErrorBody>;
+    return body.error ? { code: body.error.code, message: body.error.message } : null;
   } catch {
-    // Non-JSON error body; keep the status-derived message.
+    return null;
   }
-  return new ApiError(response.status, code, message);
+}
+
+async function toApiError(response: Response): Promise<ApiError> {
+  const fallback = response.statusText || "Request failed";
+  const parsed = parseErrorBody(await response.text());
+  return new ApiError(
+    response.status,
+    parsed?.code ?? "error",
+    parsed?.message ?? fallback,
+  );
 }
 
 interface RequestOptions extends RequestInit {
@@ -86,12 +92,70 @@ export function getDocument(id: string, signal?: AbortSignal): Promise<DocumentR
   return request<DocumentResponse>(`/documents/${id}`, { signal });
 }
 
-export function uploadDocument(file: File): Promise<DocumentResponse> {
+/**
+ * Uploads via XHR rather than fetch because only XHR reports request upload
+ * progress, which the UI needs for the transfer bar.
+ */
+export async function uploadDocument(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<DocumentResponse> {
+  let headers: Headers;
+  try {
+    headers = await buildApiHeaders();
+  } catch (error) {
+    if (error instanceof AuthRequiredError) {
+      throw new ApiError(401, "unauthorized", "Authentication required");
+    }
+    throw error;
+  }
+
   const formData = new FormData();
   formData.append("file", file);
-  return request<DocumentResponse>("/documents", {
-    method: "POST",
-    body: formData,
+
+  return new Promise<DocumentResponse>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", apiUrl("/documents"));
+    headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) {
+        onProgress?.(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      if (xhr.status === 401) {
+        void redirectToLogin();
+        reject(new ApiError(401, "unauthorized", "Authentication required"));
+        return;
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const parsed = parseErrorBody(xhr.responseText);
+        reject(
+          new ApiError(
+            xhr.status,
+            parsed?.code ?? "error",
+            parsed?.message ?? "Upload failed",
+          ),
+        );
+        return;
+      }
+      try {
+        resolve(JSON.parse(xhr.responseText) as DocumentResponse);
+      } catch {
+        reject(new ApiError(502, "invalid_response", "Malformed upload response"));
+      }
+    });
+
+    xhr.addEventListener("error", () =>
+      reject(new ApiError(0, "network_error", "Upload failed — check your connection")),
+    );
+    xhr.addEventListener("abort", () =>
+      reject(new ApiError(0, "aborted", "Upload cancelled")),
+    );
+
+    xhr.send(formData);
   });
 }
 

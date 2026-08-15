@@ -10,6 +10,8 @@ export interface DocumentResponse {
 }
 
 export interface Source {
+  /** Matches the inline [Source N] marker in the answer text. */
+  number: number;
   document_id: string;
   filename: string;
   page_number: number;

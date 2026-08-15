@@ -40,5 +40,10 @@ export function useUpload({ enableDrag = false }: { enableDrag?: boolean } = {})
     disabled: upload.isPending,
   });
 
-  return { ...dropzone, isPending: upload.isPending, maxBytes: MAX_BYTES };
+  return {
+    ...dropzone,
+    isPending: upload.isPending,
+    progress: upload.progress,
+    maxBytes: MAX_BYTES,
+  };
 }
