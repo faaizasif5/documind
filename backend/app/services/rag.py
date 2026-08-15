@@ -56,8 +56,7 @@ def build_sources(chunks: Sequence[RetrievedChunk]) -> list[Source]:
 def build_user_prompt(question: str, chunks: Sequence[RetrievedChunk]) -> str:
     """Assemble the context + question prompt with numbered, cited source blocks."""
     numbers = {
-        (source.document_id, source.page_number): source.number
-        for source in build_sources(chunks)
+        (source.document_id, source.page_number): source.number for source in build_sources(chunks)
     }
     blocks = [
         f"[Source {numbers[(chunk.document_id, chunk.page_number)]}: "

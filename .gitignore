@@ -24,5 +24,4 @@ out/
 .DS_Store
 Thumbs.db
 .vscode/
-CONTEXT.md
-TECHNICAL_GUIDE.md
+docs/

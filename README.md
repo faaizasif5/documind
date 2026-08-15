@@ -1,60 +1,116 @@
 # DocuMind
 
-DocuMind is a Retrieval-Augmented Generation (RAG) document Q&A application. Upload
-PDFs, and the backend extracts, chunks, and embeds their content into a vector store;
-questions are then answered by an LLM using the most relevant chunks, with **streamed,
-source-grounded citations**.
+DocuMind is a production-oriented RAG document Q&A application. Sign in with Google,
+upload PDFs, and ask questions against your private document library. Answers stream as
+they are generated and include interactive citations to the source file and page.
 
-**Live demo:** [documind-eight-alpha.vercel.app](https://documind-eight-alpha.vercel.app/)
-## Architecture
+**Live app:** [documind-eight-alpha.vercel.app](https://documind-eight-alpha.vercel.app/)
 
-```text
-documind/
-├── backend/    FastAPI (async) · SQLAlchemy 2.0 + asyncpg · pgvector on Supabase
-│               pluggable Gemini/OpenAI providers · SSE streaming chat
-└── frontend/   Next.js 14 (App Router, TS) · Tailwind + shadcn/ui · TanStack Query
-```
+## Highlights
 
-- **Retrieval:** PDF text is split into token-aware, per-page chunks, embedded
-  (1536-dim), and stored in PostgreSQL with a pgvector HNSW cosine index.
-- **Generation:** at query time the question is embedded, the top-k chunks are
-  retrieved, and the answer is streamed token-by-token over Server-Sent Events,
-  followed by deduplicated citations (filename + page).
-- **Pluggable AI:** Gemini (default) or OpenAI behind one interface, selected via the
-  `LLM_PROVIDER` env var. Embeddings from different providers are not cross-compatible.
+- Google SSO through Supabase Auth with FastAPI JWT verification
+- Per-user document isolation across upload, listing, retrieval, chat, and deletion
+- PDF upload transfer progress followed by background processing status
+- Per-page, token-aware chunking with 1536-dimensional embeddings
+- PostgreSQL/pgvector retrieval using an HNSW cosine index
+- Gemini or OpenAI selected through configuration behind one provider interface
+- Markdown answers streamed over POST-based Server-Sent Events
+- Numbered, source-filtered citations with grouped citation support
+- Structured API errors and fully async database/provider I/O
+- Deployed on Vercel, Render, and Supabase
 
-## Tech stack
+## How it works
 
-| Layer    | Choices |
-|----------|---------|
-| Backend  | FastAPI, Pydantic v2, SQLAlchemy 2.0 async, asyncpg, Alembic |
-| Vector DB| PostgreSQL + pgvector (Supabase), HNSW cosine index |
-| AI       | Gemini (`gemini-2.5-flash`, `gemini-embedding-001`) or OpenAI (`gpt-4o-mini`, `text-embedding-3-small`) |
-| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query |
-| Tooling  | ruff, mypy, pytest (backend); ESLint (frontend) |
+During ingestion, the API validates a PDF, returns `202 Accepted`, and processes it in a
+background task. PyMuPDF extracts each page, a token-aware splitter creates overlapping
+chunks, and the configured provider embeds them for storage in pgvector.
 
-## Getting started
+For a question, DocuMind embeds the query, retrieves the top matching chunks belonging
+to the signed-in user, and supplies those numbered sources to the completion model. The
+answer streams token by token, followed by structured metadata for only the sources the
+model cited.
 
-Each app has its own setup instructions:
+## Technology
 
-- **Backend** — see [`backend/README.md`](backend/README.md) (Python venv, env vars,
-  Alembic migrations, dev server on `:8000`).
-- **Frontend** — see [`frontend/README.md`](frontend/README.md) (Node 20+, `npm install`,
-  dev server on `:3000`).
+- **Frontend:** Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
+- **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2.0 async, asyncpg, Alembic
+- **Data and auth:** Supabase PostgreSQL, pgvector, Supabase Auth
+- **AI:** Gemini (`gemini-2.5-flash`, `gemini-embedding-001`) or OpenAI
+  (`gpt-4o-mini`, `text-embedding-3-small`)
+- **Hosting:** Vercel frontend and Render API
+- **Quality:** Ruff, strict mypy, pytest, ESLint, TypeScript, Next.js production build
 
-Quick start:
+## Local setup
 
-```bash
-# Backend (PowerShell, from backend/)
-python -m venv .venv; .\.venv\Scripts\Activate.ps1
+### Prerequisites
+
+- Python 3.12+
+- Node.js 20+
+- A Supabase project (Postgres with pgvector + Google Auth)
+- A Gemini API key or OpenAI API key
+
+### Backend
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
-fastapi dev app/main.py        # http://127.0.0.1:8000/docs
-
-# Frontend (from frontend/)
-npm install
-npm run dev                    # http://localhost:3000
+Copy-Item .env.example .env
+# Fill in values from .env.example, then:
+alembic upgrade head
+fastapi dev app/main.py
 ```
 
-The frontend reads the backend URL from `NEXT_PUBLIC_API_BASE_URL`, and the backend's
-`BACKEND_CORS_ORIGINS` must include the frontend origin (`http://localhost:3000` by default).
+API: `http://127.0.0.1:8000` · docs: `/docs`  
+Details: [`backend/README.md`](backend/README.md) and [`backend/.env.example`](backend/.env.example)
 
+### Frontend
+
+```powershell
+cd frontend
+Copy-Item .env.local.example .env.local
+# Fill in values from .env.local.example, then:
+npm install
+npm run dev
+```
+
+App: [http://localhost:3000](http://localhost:3000) — signed-out visitors see the
+marketing page; after Google sign-in, the same route opens the document Q&A app.  
+Details: [`frontend/README.md`](frontend/README.md) and
+[`frontend/.env.local.example`](frontend/.env.local.example)
+
+## Verify the happy path
+
+1. Sign in with Google.
+2. Upload a text-based PDF and watch transfer progress change to processing, then ready.
+3. Ask a question answered by the PDF.
+4. Confirm the answer streams and includes numbered citation badges.
+5. Open a citation and verify its filename and page number.
+6. Sign out and confirm the public marketing page returns.
+
+Scanned image-only PDFs require OCR and are not supported. Chat is currently stateless,
+and switching AI providers requires re-uploading documents because embedding spaces are
+not cross-compatible.
+
+## Quality gates
+
+Backend:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+ruff check .
+ruff format --check .
+mypy .
+pytest -q
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npx tsc --noEmit
+npm run lint
+npm run build
+```

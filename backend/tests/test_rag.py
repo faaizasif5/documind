@@ -89,9 +89,7 @@ def test_cited_sources_keeps_only_referenced_numbers() -> None:
 def test_cited_sources_reads_grouped_citation_markers() -> None:
     sources = build_sources([_chunk(1), _chunk(2), _chunk(3), _chunk(4), _chunk(5)])
 
-    cited = cited_sources(
-        "Overview [Source 1, Source 2, Source 5]. Details [Source 4].", sources
-    )
+    cited = cited_sources("Overview [Source 1, Source 2, Source 5]. Details [Source 4].", sources)
 
     assert [source.number for source in cited] == [1, 2, 4, 5]
 
