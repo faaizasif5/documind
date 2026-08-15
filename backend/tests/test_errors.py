@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 import pytest
@@ -7,9 +7,26 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.routes import chat as chat_route
+from app.core.auth import CurrentUser, get_current_user
 from app.db.session import get_db_session
 from app.main import create_app
 from app.models import Document, DocumentStatus
+
+
+class _FakeScalars:
+    def __init__(self, rows: Sequence[Document]) -> None:
+        self._rows = list(rows)
+
+    def all(self) -> list[Document]:
+        return self._rows
+
+
+class _FakeResult:
+    def __init__(self, rows: Sequence[Document]) -> None:
+        self._rows = list(rows)
+
+    def scalars(self) -> _FakeScalars:
+        return _FakeScalars(self._rows)
 
 
 class _FakeSession:
@@ -23,6 +40,10 @@ class _FakeSession:
     async def get(self, _model: Any, _pk: Any) -> Document | None:
         return self._document
 
+    async def execute(self, _stmt: Any) -> _FakeResult:
+        rows = [self._document] if self._document is not None else []
+        return _FakeResult(rows)
+
     async def delete(self, _obj: Any) -> None:
         self.deleted = True
 
@@ -30,8 +51,23 @@ class _FakeSession:
         self.committed = True
 
 
-def _build_app(session: _FakeSession | None = None) -> FastAPI:
+def _build_app(
+    session: _FakeSession | None = None,
+    *,
+    user_id: uuid.UUID | None = None,
+) -> FastAPI:
     app = create_app()
+    resolved_user = user_id
+    if resolved_user is None and session is not None and session._document is not None:
+        resolved_user = session._document.user_id
+    if resolved_user is None:
+        resolved_user = uuid.uuid4()
+
+    async def _current_user() -> CurrentUser:
+        return CurrentUser(id=resolved_user)
+
+    app.dependency_overrides[get_current_user] = _current_user
+
     if session is not None:
 
         async def _override() -> AsyncIterator[_FakeSession]:
@@ -41,9 +77,10 @@ def _build_app(session: _FakeSession | None = None) -> FastAPI:
     return app
 
 
-def _sample_document() -> Document:
+def _sample_document(*, user_id: uuid.UUID | None = None) -> Document:
     return Document(
         id=uuid.uuid4(),
+        user_id=user_id or uuid.uuid4(),
         filename="a.pdf",
         file_size=10,
         page_count=1,
@@ -84,10 +121,11 @@ def test_get_document_not_found_returns_envelope() -> None:
 
 
 def test_delete_document_cascades_and_returns_204() -> None:
-    session = _FakeSession(document=_sample_document())
-    client = TestClient(_build_app(session))
+    document = _sample_document()
+    session = _FakeSession(document=document)
+    client = TestClient(_build_app(session, user_id=document.user_id))
 
-    response = client.delete(f"/api/v1/documents/{uuid.uuid4()}")
+    response = client.delete(f"/api/v1/documents/{document.id}")
 
     assert response.status_code == 204
     assert response.content == b""

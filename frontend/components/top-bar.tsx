@@ -3,8 +3,10 @@
 import { Menu } from "lucide-react";
 
 import { HealthBadge } from "@/components/health-badge";
+import { LogoutButton } from "@/components/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { UserBadge } from "@/components/user-badge";
 
 interface TopBarProps {
   title: string;
@@ -39,6 +41,8 @@ export function TopBar({ title, subtitle, onOpenSheet }: TopBarProps) {
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <HealthBadge />
         <ThemeToggle />
+        <UserBadge />
+        <LogoutButton />
       </div>
     </header>
   );

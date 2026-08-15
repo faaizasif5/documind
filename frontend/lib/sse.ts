@@ -1,4 +1,5 @@
 import { ApiError, apiUrl } from "@/lib/api";
+import { AuthRequiredError, buildApiHeaders, redirectToLogin } from "@/lib/auth-headers";
 import type { ApiErrorBody, ChatRequest, Source } from "@/lib/types";
 
 export interface ChatStreamHandlers {
@@ -58,12 +59,27 @@ export async function streamChat(
   handlers: ChatStreamHandlers,
   signal: AbortSignal,
 ): Promise<void> {
+  let headers: Headers;
+  try {
+    headers = await buildApiHeaders({ "Content-Type": "application/json" });
+  } catch (error) {
+    if (error instanceof AuthRequiredError) {
+      throw new ApiError(401, "unauthorized", "Authentication required");
+    }
+    throw error;
+  }
+
   const response = await fetch(apiUrl("/chat"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
     signal,
   });
+
+  if (response.status === 401) {
+    await redirectToLogin();
+    throw new ApiError(401, "unauthorized", "Authentication required");
+  }
 
   if (!response.ok) {
     let code = "error";

@@ -20,10 +20,19 @@ async def retrieve_chunks(
     session: AsyncSession,
     query_embedding: list[float],
     top_k: int,
+    user_id: uuid.UUID,
     document_id: uuid.UUID | None = None,
 ) -> list[RetrievedChunk]:
-    """Return the ``top_k`` chunks most similar to the query embedding (cosine)."""
-    stmt = select(Chunk, Document.filename).join(Document, Chunk.document_id == Document.id)
+    """Return the ``top_k`` chunks most similar to the query, scoped to ``user_id``.
+
+    Always filters by document ownership. When ``document_id`` is set, results are
+    further limited to that document (caller must have already verified ownership).
+    """
+    stmt = (
+        select(Chunk, Document.filename)
+        .join(Document, Chunk.document_id == Document.id)
+        .where(Document.user_id == user_id)
+    )
     if document_id is not None:
         stmt = stmt.where(Chunk.document_id == document_id)
     stmt = stmt.order_by(Chunk.embedding.cosine_distance(query_embedding)).limit(top_k)

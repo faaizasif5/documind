@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     # statements). Falls back to database_url when unset.
     database_migration_url: str | None = None
 
+    # Supabase Auth — project URL is required for JWKS JWT verification (ES256/RS256).
+    # Example: https://<project-ref>.supabase.co
+    supabase_url: str
+    # Optional legacy HS256 shared secret (Previous key). Not needed when Current
+    # signing key is ECC/RSA; keep only as a temporary fallback for old tokens.
+    supabase_jwt_secret: str | None = None
+
     # AI provider selection. Keys are validated lazily when a provider is built,
     # so the app boots without a key for work that doesn't call the AI.
     llm_provider: LLMProvider = "gemini"

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 # Machine-readable code for each HTTP status we deliberately raise.
 _STATUS_CODES: dict[int, str] = {
     status.HTTP_400_BAD_REQUEST: "bad_request",
+    status.HTTP_401_UNAUTHORIZED: "unauthorized",
     status.HTTP_404_NOT_FOUND: "not_found",
     status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: "payload_too_large",
     status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: "unsupported_media_type",

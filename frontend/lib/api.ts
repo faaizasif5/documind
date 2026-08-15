@@ -1,3 +1,4 @@
+import { AuthRequiredError, buildApiHeaders, redirectToLogin } from "@/lib/auth-headers";
 import type { ApiErrorBody, DocumentResponse } from "@/lib/types";
 
 const API_BASE_URL =
@@ -34,8 +35,31 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, code, message);
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(apiUrl(path), init);
+interface RequestOptions extends RequestInit {
+  /** When true (default), attach Bearer token. Health checks set false. */
+  requireAuth?: boolean;
+}
+
+async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+  const { requireAuth = true, headers: initHeaders, ...rest } = init;
+
+  let headers: Headers;
+  try {
+    headers = await buildApiHeaders(initHeaders, { requireAuth });
+  } catch (error) {
+    if (error instanceof AuthRequiredError) {
+      throw new ApiError(401, "unauthorized", "Authentication required");
+    }
+    throw error;
+  }
+
+  const response = await fetch(apiUrl(path), { ...rest, headers });
+
+  if (response.status === 401 && requireAuth) {
+    await redirectToLogin();
+    throw new ApiError(401, "unauthorized", "Authentication required");
+  }
+
   if (!response.ok) {
     throw await toApiError(response);
   }
@@ -51,7 +75,7 @@ export interface HealthResponse {
 }
 
 export function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  return request<HealthResponse>("/healthz", { signal });
+  return request<HealthResponse>("/healthz", { signal, requireAuth: false });
 }
 
 export function listDocuments(signal?: AbortSignal): Promise<DocumentResponse[]> {
