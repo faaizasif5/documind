@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { HealthBadge } from "@/components/health-badge";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { Reveal } from "@/components/marketing/reveal";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
@@ -42,6 +43,7 @@ export function MarketingLanding() {
               ))}
             </div>
             <ThemeToggle />
+            <HealthBadge />
             <Link
               href="/login"
               className={buttonVariants({ variant: "ghost", size: "sm" })}

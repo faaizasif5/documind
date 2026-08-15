@@ -2,6 +2,7 @@ import { ArrowLeft, CheckCircle2, Quote } from "lucide-react";
 import Link from "next/link";
 
 import { BrandMark } from "@/components/brand-mark";
+import { HealthBadge } from "@/components/health-badge";
 import { LoginForm } from "@/components/login-form";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -73,7 +74,8 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
         <div className="absolute left-5 top-5 flex items-center gap-2 lg:hidden">
           <BrandMark />
         </div>
-        <div className="absolute right-4 top-4">
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <HealthBadge />
           <ThemeToggle />
         </div>
 
