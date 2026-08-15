@@ -62,6 +62,16 @@ export const NAV_LINKS: readonly NavLink[] = [
   { href: "#faq", label: "FAQ" },
 ];
 
+export const PRIVACY_TAGLINE =
+  "Your original PDFs are never stored — only searchable text and embeddings stay.";
+
+export const PRIVACY_TRUST_POINTS: readonly string[] = [
+  "Original PDFs discarded after processing",
+  "Per-user isolation",
+  "Secure Google sign-in",
+  "Delete anytime",
+];
+
 export const MARKETING_FEATURES: readonly MarketingFeature[] = [
   {
     icon: Search,
@@ -95,9 +105,9 @@ export const MARKETING_FEATURES: readonly MarketingFeature[] = [
   },
   {
     icon: ShieldCheck,
-    title: "Private workspace",
+    title: "No PDF archive",
     description:
-      "Your uploads are isolated to your account and never mixed with anyone else's.",
+      "Files are processed in memory and discarded. We keep only the passages and embeddings needed to answer — scoped to your account.",
   },
 ];
 
@@ -112,6 +122,11 @@ export const MARKETING_FAQS: readonly MarketingFaq[] = [
     question: "What kind of documents can I upload?",
     answer:
       "PDFs today — handbooks, contracts, research papers, policies. Text is extracted page by page so citations stay accurate.",
+  },
+  {
+    question: "Do you keep my PDF files?",
+    answer:
+      "No. The original PDF is processed in memory and never saved to disk or object storage. We retain only extracted text passages and embeddings so DocuMind can answer questions and cite pages. Delete a document anytime and those passages are removed too.",
   },
   {
     question: "How do I know the answer is real?",
@@ -163,7 +178,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     icon: UploadCloud,
     title: "Upload a PDF",
     description:
-      "Drop in the handbook, contract, or policy you need answers from. Parsing starts immediately.",
+      "Drop in the handbook, contract, or policy you need answers from. The file is read in memory — never archived.",
     details: [
       { icon: FileText, label: "Product handbook.pdf", meta: "2.4 MB · 48 pages" },
       { icon: Search, label: "Extracting text", meta: "page by page" },
@@ -173,7 +188,7 @@ export const WORKFLOW_STEPS: readonly WorkflowStep[] = [
     icon: Sparkles,
     title: "We make it searchable",
     description:
-      "Content is chunked with overlap, embedded, and stored in pgvector for meaning-based retrieval.",
+      "Text is chunked, embedded, and indexed. The original PDF is discarded; only passages and vectors remain.",
     details: [
       { icon: Layers, label: "184 chunks created", meta: "1,000 chars · 150 overlap" },
       { icon: Sparkles, label: "Embeddings stored", meta: "pgvector index" },
