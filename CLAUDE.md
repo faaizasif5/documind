@@ -40,7 +40,7 @@ backend/alembic/          migrations 0001–0003
 backend/evals/            eval harness (python -m evals ...); corpus, golden.jsonl, caches
 backend/tests/            pytest; *_pg.py tests need TEST_DATABASE_URL
 frontend/{app,components,hooks,lib}/
-.github/workflows/ci.yml  backend gates + PG tests, offline retrieval evals, frontend build
+.github/workflows/ci.yml  PR-only (into main/dev/documind-v2): backend gates, evals, frontend
 ```
 
 ## Commands (PowerShell, backend commands from `backend/`, venv at `backend/.venv`)

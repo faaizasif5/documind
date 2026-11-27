@@ -1,9 +1,10 @@
 name: CI
 
+# PR-only: checks run before a change lands on an integration branch; the merge itself
+# does not re-run them. Merges made without a PR get no CI.
 on:
-  push:
-    branches: [main, dev, documind-v2, "v2/**"]
   pull_request:
+    branches: [main, dev, documind-v2]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -81,9 +82,15 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE documind_eval"
           alembic upgrade head
       - run: python -m evals validate
+      # The baseline and embedding cache come from the first online run; until they are
+      # committed there is nothing to compare against, so warn instead of failing.
+      - name: Baseline missing
+        if: hashFiles('backend/evals/baseline.json') == ''
+        run: echo "::warning::evals/baseline.json not committed yet; retrieval regression check skipped"
       # --offline: any embedding missing from the committed cache fails the job
       # instead of calling an API. Fails on regression vs evals/baseline.json.
-      - run: python -m evals retrieval --offline --check-baseline --label ci
+      - if: hashFiles('backend/evals/baseline.json') != ''
+        run: python -m evals retrieval --offline --check-baseline --label ci
 
   frontend:
     name: Frontend typecheck, lint, build
