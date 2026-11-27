@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDeleteDocument, useDocuments } from "@/hooks/use-documents";
 import { ApiError } from "@/lib/api";
+import { failureReason } from "@/lib/document-status";
 import type { DocumentResponse, DocumentStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -40,13 +41,24 @@ function DocumentCard({ document }: { document: DocumentResponse }) {
             {document.status === "processing" && (
               <Loader2 className="mr-1 inline size-3 animate-spin" />
             )}
-            {STATUS_LABEL[document.status]}
+            {document.status === "processing" && document.total_chunks !== null ? (
+              <span className="tabular-nums">
+                {document.processed_chunks} / {document.total_chunks}
+              </span>
+            ) : (
+              STATUS_LABEL[document.status]
+            )}
           </span>
           <span className="text-muted-foreground">·</span>
           <span className="text-muted-foreground">
             {document.page_count} {document.page_count === 1 ? "page" : "pages"}
           </span>
         </p>
+        {document.status === "failed" && (
+          <p className="truncate text-[11px] text-destructive" title={failureReason(document)}>
+            {failureReason(document)}
+          </p>
+        )}
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

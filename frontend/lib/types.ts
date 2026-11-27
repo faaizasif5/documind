@@ -6,6 +6,12 @@ export interface DocumentResponse {
   file_size: number;
   page_count: number;
   status: DocumentStatus;
+  /** Chunks embedded and stored so far. */
+  processed_chunks: number;
+  /** Null until the PDF has been chunked. */
+  total_chunks: number | null;
+  /** User-safe failure reason when status is "failed". */
+  error_message: string | null;
   created_at: string;
 }
 

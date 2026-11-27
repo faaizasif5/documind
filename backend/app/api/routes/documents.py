@@ -1,8 +1,9 @@
+import asyncio
 import uuid
 from collections.abc import Sequence
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +14,7 @@ from app.models import Document, DocumentStatus
 from app.schemas.document import DocumentResponse
 from app.schemas.errors import ErrorResponse
 from app.services import pdf_extraction
-from app.services.ingestion import process_document
+from app.services.job_queue import enqueue_ingestion
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -52,7 +53,6 @@ def _owned_or_404(document: Document | None, user_id: uuid.UUID) -> Document:
     responses=_UPLOAD_ERRORS,
 )
 async def upload_document(
-    background_tasks: BackgroundTasks,
     file: UploadFile,
     session: DbSession,
     settings: AppSettings,
@@ -76,7 +76,7 @@ async def upload_document(
         )
 
     try:
-        page_count = pdf_extraction.get_page_count(pdf_bytes)
+        page_count = await asyncio.to_thread(pdf_extraction.get_page_count, pdf_bytes)
     except pdf_extraction.PDFExtractionError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -84,6 +84,7 @@ async def upload_document(
         ) from exc
 
     document = Document(
+        id=uuid.uuid4(),
         user_id=user.id,
         filename=file.filename or "untitled.pdf",
         file_size=len(pdf_bytes),
@@ -91,11 +92,11 @@ async def upload_document(
         status=DocumentStatus.processing,
     )
     session.add(document)
+    # Same transaction as the document: a durable job exists iff the upload succeeded.
+    # The ingestion worker picks it up, so the work survives restarts and redeploys.
+    enqueue_ingestion(session, document.id, pdf_bytes)
     await session.commit()
     await session.refresh(document)
-
-    # Heavy work (extract/chunk/embed) runs after the response is returned.
-    background_tasks.add_task(process_document, document.id, pdf_bytes)
     return document
 
 

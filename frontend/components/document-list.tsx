@@ -4,9 +4,11 @@ import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DocumentIcon } from "@/components/document-icon";
+import { IngestionProgress } from "@/components/ingestion-progress";
 import { Button } from "@/components/ui/button";
 import { useDeleteDocument, useDocuments } from "@/hooks/use-documents";
 import { ApiError } from "@/lib/api";
+import { failureReason } from "@/lib/document-status";
 import type { DocumentResponse, DocumentStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,12 @@ function DocumentRow({ document }: { document: DocumentResponse }) {
           {document.page_count} {document.page_count === 1 ? "page" : "pages"} ·{" "}
           {formatSize(document.file_size)}
         </p>
+        {document.status === "processing" && (
+          <IngestionProgress document={document} className="mt-2 max-w-xs" />
+        )}
+        {document.status === "failed" && (
+          <p className="mt-1 text-xs text-destructive">{failureReason(document)}</p>
+        )}
       </div>
       <span
         className={cn(

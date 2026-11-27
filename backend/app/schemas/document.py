@@ -14,4 +14,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     page_count: int
     status: DocumentStatus
+    processed_chunks: int
+    total_chunks: int | None
+    error_message: str | None
     created_at: datetime

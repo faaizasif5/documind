@@ -1,6 +1,7 @@
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Self
 
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["openai", "gemini"]
@@ -43,10 +44,40 @@ class Settings(BaseSettings):
     gemini_completion_model: str = "gemini-2.5-flash"
 
     embedding_dim: int = 1536
-    embedding_batch_size: int = 64
+    # Chunks per embed call. Smaller batches give finer progress and smaller resume gaps;
+    # they don't cost extra quota because Gemini counts every text as one request.
+    embedding_batch_size: int = 32
     chunk_size: int = 512
     chunk_overlap: int = 50
     upload_max_bytes: int = 10 * 1024 * 1024
+
+    # Proactive embedding throttle (sliding 60 s window, shared by ingestion and chat).
+    # Gemini free tier counts each embedded text as one request: 100/min observed.
+    embedding_rpm: int = 100
+    embedding_tpm: int = 30_000
+    # Requests per minute that ingestion must leave free so chat queries never starve.
+    embedding_query_reserve_rpm: int = 10
+    embedding_max_retries: int = 5
+
+    # Durable ingestion worker (Postgres job queue).
+    ingestion_worker_enabled: bool = True
+    ingestion_poll_interval_seconds: float = 5.0
+    ingestion_lease_seconds: int = 120
+    ingestion_max_attempts: int = 3
+    ingestion_retry_backoff_seconds: float = 30.0
+    # Gemini's free tier allows roughly 1,000 embedded texts per day for the whole project
+    # (shared by all users and chat). 500 keeps one document to about half a day's quota.
+    max_chunks_per_document: int = Field(default=500, ge=1)
+
+    @model_validator(mode="after")
+    def _check_embedding_budget(self) -> Self:
+        ingest_rpm = self.embedding_rpm - self.embedding_query_reserve_rpm
+        if self.embedding_batch_size < 1 or self.embedding_batch_size > ingest_rpm:
+            raise ValueError(
+                "EMBEDDING_BATCH_SIZE must be between 1 and "
+                "EMBEDDING_RPM - EMBEDDING_QUERY_RESERVE_RPM"
+            )
+        return self
 
     @property
     def cors_origins(self) -> list[str]:

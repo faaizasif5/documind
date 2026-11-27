@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import get_settings
@@ -17,6 +18,17 @@ def _get_splitter() -> RecursiveCharacterTextSplitter:
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
     )
+
+
+@lru_cache
+def _get_encoding() -> tiktoken.Encoding:
+    return tiktoken.get_encoding(_TOKEN_ENCODING)
+
+
+def count_tokens(texts: list[str]) -> int:
+    """Approximate token count, used to stay under provider tokens-per-minute quotas."""
+    encoding = _get_encoding()
+    return sum(len(encoding.encode(text)) for text in texts)
 
 
 def chunk_page_text(text: str) -> list[str]:

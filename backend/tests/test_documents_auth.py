@@ -7,13 +7,14 @@ from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
+import fitz
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.auth import CurrentUser, get_current_user
 from app.db.session import get_db_session
 from app.main import create_app
-from app.models import Document, DocumentStatus
+from app.models import Document, DocumentStatus, IngestionJob
 
 
 class _FakeScalars:
@@ -40,6 +41,7 @@ class _FakeSession:
         self.deleted: Document | None = None
         self.committed = False
         self.added: Document | None = None
+        self.jobs: list[IngestionJob] = []
 
     async def get(self, _model: Any, pk: Any) -> Document | None:
         for document in self.documents:
@@ -57,9 +59,12 @@ class _FakeSession:
         )
         return _FakeResult(rows)
 
-    def add(self, document: Document) -> None:
-        self.added = document
-        self.documents.append(document)
+    def add(self, obj: Document | IngestionJob) -> None:
+        if isinstance(obj, IngestionJob):
+            self.jobs.append(obj)
+            return
+        self.added = obj
+        self.documents.append(obj)
 
     async def delete(self, document: Document) -> None:
         self.deleted = document
@@ -69,7 +74,9 @@ class _FakeSession:
         self.committed = True
 
     async def refresh(self, document: Document) -> None:
+        # Mirror server defaults applied on INSERT.
         document.created_at = datetime.now(UTC)
+        document.processed_chunks = 0
 
 
 def _extract_user_id_filter(stmt: Any) -> uuid.UUID | None:
@@ -97,6 +104,8 @@ def _document(*, owner: uuid.UUID, filename: str = "a.pdf") -> Document:
         file_size=10,
         page_count=1,
         status=DocumentStatus.ready,
+        processed_chunks=1,
+        total_chunks=1,
         created_at=datetime.now(UTC),
     )
 
@@ -207,3 +216,46 @@ def test_delete_own_document_returns_204() -> None:
     assert response.status_code == 204
     assert session.deleted is document
     assert session.committed is True
+
+
+def _pdf_bytes() -> bytes:
+    pdf = fitz.open()
+    pdf.new_page().insert_text((72, 72), "hello")
+    data: bytes = pdf.tobytes()
+    pdf.close()
+    return data
+
+
+def test_upload_enqueues_durable_job_with_document() -> None:
+    owner = uuid.uuid4()
+    session = _FakeSession()
+    client = TestClient(_build_app(session, user_id=owner))
+    pdf = _pdf_bytes()
+
+    response = client.post(
+        "/api/v1/documents", files={"file": ("notes.pdf", pdf, "application/pdf")}
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["status"] == "processing"
+    assert body["processed_chunks"] == 0
+    assert body["total_chunks"] is None
+    assert body["error_message"] is None
+    assert session.committed is True
+    assert len(session.jobs) == 1
+    assert session.added is not None
+    assert session.jobs[0].document_id == session.added.id
+    assert session.jobs[0].pdf_bytes == pdf
+
+
+def test_upload_rejects_non_pdf_without_enqueueing() -> None:
+    session = _FakeSession()
+    client = TestClient(_build_app(session))
+
+    response = client.post(
+        "/api/v1/documents", files={"file": ("notes.txt", b"hello", "text/plain")}
+    )
+
+    assert response.status_code == 415
+    assert session.jobs == []
