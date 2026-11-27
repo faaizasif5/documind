@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     llm_provider: LLMProvider = "gemini"
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
+    # Groq (OpenAI-compatible): eval judge now; completion fallback provider in v2 Phase 3.
+    groq_api_key: str | None = None
     openai_embedding_model: str = "text-embedding-3-small"
     gemini_embedding_model: str = "gemini-embedding-001"
     openai_completion_model: str = "gpt-4o-mini"

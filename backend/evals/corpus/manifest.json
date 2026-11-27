@@ -1,0 +1,28 @@
+{
+  "documents": [
+    {
+      "filename": "NIST.AI.100-1.pdf",
+      "title": "Artificial Intelligence Risk Management Framework (AI RMF 1.0)",
+      "source_url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+      "license": "US Government work (NIST); not subject to copyright in the United States",
+      "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
+      "page_count": 48
+    },
+    {
+      "filename": "NIST.AI.600-1.pdf",
+      "title": "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile",
+      "source_url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+      "license": "US Government work (NIST); not subject to copyright in the United States",
+      "sha256": "6e73620ab6b64e90ef2c04bf0e0d6246185a2f4b1b13cab0df494496cff89b6a",
+      "page_count": 64
+    },
+    {
+      "filename": "NIST.CSWP.29.pdf",
+      "title": "The NIST Cybersecurity Framework (CSF) 2.0",
+      "source_url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+      "license": "US Government work (NIST); not subject to copyright in the United States",
+      "sha256": "3c31f46fee98cac0c4323453e5109291a213b4de7fef8c058af9bf67f717433c",
+      "page_count": 32
+    }
+  ]
+}

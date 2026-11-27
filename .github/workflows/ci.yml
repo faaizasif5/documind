@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, documind-v2, "v2/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Dummy values: CI never talks to Supabase or any AI provider.
+env:
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+  SUPABASE_URL: https://ci.invalid
+  LLM_PROVIDER: gemini
+  GEMINI_API_KEY: ci-unused
+  INGESTION_WORKER_ENABLED: "false"
+
+jobs:
+  backend-quality:
+    name: Backend lint, types, tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/documind_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy .
+      - name: Create test database
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE documind_test"
+      - run: pytest -q
+
+  retrieval-evals:
+    name: Retrieval evals (offline, cached embeddings)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      EVAL_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/documind_eval
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/documind_eval
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: backend/.python-version
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - run: pip install -e ".[dev]"
+      - name: Create and migrate eval database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE documind_eval"
+          alembic upgrade head
+      - run: python -m evals validate
+      # --offline: any embedding missing from the committed cache fails the job
+      # instead of calling an API. Fails on regression vs evals/baseline.json.
+      - run: python -m evals retrieval --offline --check-baseline --label ci
+
+  frontend:
+    name: Frontend typecheck, lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.invalid
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx next lint
+      - run: npm run build

@@ -24,4 +24,7 @@ out/
 .DS_Store
 Thumbs.db
 .vscode/
-docs/
+docs/*
+!docs/V2_RESULTS.md
+
+backend/evals/runs/
