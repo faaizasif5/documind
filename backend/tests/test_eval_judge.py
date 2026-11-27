@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import httpx
 import openai
@@ -102,7 +103,9 @@ async def test_correctness_dropped_without_reference(tmp_path: Path) -> None:
 
 def _rate_limit_error(retry_after: str | None) -> openai.RateLimitError:
     headers = {"retry-after": retry_after} if retry_after else {}
-    response = httpx.Response(429, headers=headers, request=httpx.Request("POST", "https://x"))
+    # openai>=3 types this as httpx2.Response, older versions as httpx.Response; both accept
+    # an httpx.Response at runtime, so keep the test independent of the SDK's HTTP library.
+    response: Any = httpx.Response(429, headers=headers, request=httpx.Request("POST", "https://x"))
     return openai.RateLimitError("slow down", response=response, body=None)
 
 
