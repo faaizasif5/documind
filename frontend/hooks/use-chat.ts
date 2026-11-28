@@ -13,11 +13,26 @@ import {
 
 import { ApiError } from "@/lib/api";
 import { streamChat } from "@/lib/sse";
-import type { Source } from "@/lib/types";
+import type { ChatTurn, Source } from "@/lib/types";
 
 export interface ChatPrompt {
   question: string;
   documentId: string | null;
+  history?: ChatTurn[];
+}
+
+// Must not exceed ChatRequest.history max_length (6) on the backend, or chat returns 422.
+const HISTORY_TURNS = 6;
+const HISTORY_TURN_CHARS = 1500;
+
+function recentHistory(messages: ChatMessage[]): ChatTurn[] {
+  return messages
+    .filter((message) => !message.streaming && !message.error && message.content.trim())
+    .slice(-HISTORY_TURNS)
+    .map((message) => ({
+      role: message.role,
+      content: message.content.slice(0, HISTORY_TURN_CHARS),
+    }));
 }
 
 export interface ChatMessage {
@@ -73,6 +88,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           {
             question: prompt.question,
             document_id: prompt.documentId,
+            history: prompt.history ?? [],
           },
           {
             onToken: (text) =>
@@ -120,6 +136,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const prompt: ChatPrompt = {
         question: trimmed,
         documentId: options.documentId ?? null,
+        history: recentHistory(messages),
       };
       const assistantId = createId();
       const now = Date.now();
@@ -149,7 +166,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       await runStream(assistantId, prompt);
     },
-    [isStreaming, runStream],
+    [isStreaming, messages, runStream],
   );
 
   const regenerate = useCallback(

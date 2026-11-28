@@ -12,6 +12,7 @@ counts as found if any retrieved chunk comes from it, matched on (filename, page
 | Date | Label | Commit | n | recall@1 | recall@3 | recall@5 | recall@10 | MRR | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | 2026-11-28 | baseline | `a7e871e+dirty` | 50 | 0.470 | 0.760 | 0.840 | 0.880 | 0.733 |  |
+| 2026-11-28 | p2-rewrite | `17ddf4f+dirty` | 50 | 0.530 | 0.860 | 0.920 | 0.940 | 0.800 | follow-up query rewrite (qwen3.8-27b) |
 <!-- retrieval-rows -->
 
 ## Answers
@@ -23,6 +24,7 @@ scale over answered questions. Citation precision uses explicit `[Source N]` mar
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-11-28 | baseline | `f46ae91+dirty` | 60 | 4.800 | 4.080 | 0.748 | 0.400 | 0.000 | 0 | superseded: judge gpt-oss-120b, rubric v1 under-counted refusals |
 | 2026-11-28 | baseline | `f46ae91+dirty` | 60 | 4.667 | 4.208 | 0.748 | 0.800 | 0.040 | 0 | judge gpt-oss-20b, rubric v2 (current baseline). Manual read: the 2 unrefused unanswerables (un-04, un-10) do decline ("no mention of…"); judge mislabel |
+| 2026-11-28 | p2-rewrite | `17ddf4f+dirty` | 60 | 4.667 | 4.500 | 0.836 | 0.800 | 0.040 | 0 | follow-up query rewrite; judge gpt-oss-20b |
 <!-- answer-rows -->
 
 ## Per-tag breakdowns
@@ -58,6 +60,29 @@ scale over answered questions. Citation precision uses explicit `[Source N]` mar
 | cross_page | 8 | 5.000 | 4.750 | 0.800 | – | 0.000 | 0 |
 | exact_term | 10 | 5.000 | 5.000 | 0.950 | – | 0.000 | 0 |
 | follow_up | 7 | 5.000 | 3.000 | 0.250 | – | 0.000 | 0 |
+| lookup | 15 | 4.867 | 4.733 | 0.922 | – | 0.000 | 0 |
+| multi_hop | 10 | 3.250 | 2.750 | 0.550 | – | 0.200 | 0 |
+| unanswerable | 10 | – | – | – | 0.800 | – | 0 |
+
+### retrieval: p2-rewrite (`17ddf4f+dirty`, 2026-11-28)
+
+| Group | n | recall@1 | recall@3 | recall@5 | recall@10 | mrr |
+|---|---|---|---|---|---|---|
+| overall | 50 | 0.530 | 0.860 | 0.920 | 0.940 | 0.800 |
+| cross_page | 8 | 0.438 | 0.875 | 0.938 | 1.000 | 0.938 |
+| exact_term | 10 | 0.400 | 0.900 | 1.000 | 1.000 | 0.642 |
+| follow_up | 7 | 0.714 | 1.000 | 1.000 | 1.000 | 0.810 |
+| lookup | 15 | 0.733 | 1.000 | 1.000 | 1.000 | 0.867 |
+| multi_hop | 10 | 0.300 | 0.500 | 0.650 | 0.700 | 0.742 |
+
+### answers: p2-rewrite (`17ddf4f+dirty`, 2026-11-28)
+
+| Group | n | faithfulness | correctness | citation_precision | refusal_rate | false_refusal_rate | uncited_answers |
+|---|---|---|---|---|---|---|---|
+| overall | 60 | 4.667 | 4.500 | 0.836 | 0.800 | 0.040 | 0 |
+| cross_page | 8 | 5.000 | 4.750 | 0.800 | – | 0.000 | 0 |
+| exact_term | 10 | 5.000 | 5.000 | 0.950 | – | 0.000 | 0 |
+| follow_up | 7 | 5.000 | 5.000 | 0.857 | – | 0.000 | 0 |
 | lookup | 15 | 4.867 | 4.733 | 0.922 | – | 0.000 | 0 |
 | multi_hop | 10 | 3.250 | 2.750 | 0.550 | – | 0.200 | 0 |
 | unanswerable | 10 | – | – | – | 0.800 | – | 0 |

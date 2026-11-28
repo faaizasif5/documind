@@ -8,7 +8,7 @@ from app.core.exceptions import ProviderRateLimitError
 from app.services.rag import NO_CONTEXT_MESSAGE
 from app.services.rate_limiter import SlidingWindowRateLimiter
 from app.services.retrieval import RetrievedChunk
-from evals.generation import AnswerCache, answer_cache_key, generate_answer
+from evals.generation import TextCache, answer_cache_key, generate_answer
 
 DOC_A, DOC_B = uuid.uuid4(), uuid.uuid4()
 MODEL = "gemini:test-model"
@@ -42,8 +42,8 @@ def _limiter() -> SlidingWindowRateLimiter:
     return SlidingWindowRateLimiter(100, 10**9)
 
 
-def _cache(tmp_path: Path) -> AnswerCache:
-    return AnswerCache(tmp_path / "answers.jsonl")
+def _cache(tmp_path: Path) -> TextCache:
+    return TextCache(tmp_path / "answers.jsonl")
 
 
 async def test_cited_pages_come_from_explicit_markers_only(tmp_path: Path) -> None:
@@ -119,7 +119,7 @@ async def test_answer_cache_survives_save_and_load(tmp_path: Path) -> None:
     cache.save()
 
     provider = _Provider("unused")
-    reloaded = AnswerCache.load(cache.path)
+    reloaded = TextCache.load(cache.path)
     answer = await generate_answer(
         provider, "Q?", chunks, _limiter(), reloaded, model=MODEL, max_attempts=1
     )

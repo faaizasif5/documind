@@ -1,6 +1,7 @@
 import uuid
 from collections.abc import AsyncIterator
 
+from app.schemas.chat import ChatTurn
 from app.services.rag import (
     build_sources,
     build_user_prompt,
@@ -149,3 +150,41 @@ async def test_stream_chat_response_emits_error_event_on_failure() -> None:
     assert "event: error" in joined
     assert "event: sources" not in joined
     assert joined.strip().endswith("event: done\ndata: {}")
+
+
+def test_build_user_prompt_without_history_is_unchanged() -> None:
+    prompt = build_user_prompt("q?", [_chunk(3, content="body")])
+
+    assert prompt == "Context:\n[Source 1: a.pdf, page 3]\nbody\n\nQuestion: q?"
+
+
+def test_build_user_prompt_with_history_adds_conversation_before_question() -> None:
+    history = [
+        ChatTurn(role="user", content="What is CSF?"),
+        ChatTurn(role="assistant", content="A framework."),
+    ]
+
+    prompt = build_user_prompt("Who wrote it?", [_chunk(1)], history)
+
+    assert prompt.endswith(
+        "Conversation so far:\nUser: What is CSF?\nAssistant: A framework.\n\n"
+        "Question: Who wrote it?"
+    )
+
+
+async def test_stream_chat_response_announces_a_rewritten_query_first() -> None:
+    rewritten = [
+        event
+        async for event in stream_chat_response(
+            _FakeProvider(), "Who wrote it?", [_chunk(1)], search_query="Who wrote CSF 2.0?"
+        )
+    ]
+    unchanged = [
+        event
+        async for event in stream_chat_response(
+            _FakeProvider(), "q?", [_chunk(1)], search_query="q?"
+        )
+    ]
+
+    assert rewritten[0] == 'event: query\ndata: {"text": "Who wrote CSF 2.0?"}\n\n'
+    assert not any(event.startswith("event: query") for event in unchanged)

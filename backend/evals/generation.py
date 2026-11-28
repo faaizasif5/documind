@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.services.providers.base import CompletionProvider
+from app.services.query_rewrite import TurnLike
 from app.services.rag import (
     NO_CONTEXT_MESSAGE,
     SYSTEM_PROMPT,
@@ -36,14 +37,16 @@ def answer_cache_key(model: str, prompt: str) -> str:
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
-class AnswerCache:
+class TextCache:
+    """Key → text store saved as JSON lines (generated answers, query rewrites)."""
+
     def __init__(self, path: Path, answers: dict[str, str] | None = None) -> None:
         self.path = path
         self._answers = answers or {}
         self.dirty = False
 
     @classmethod
-    def load(cls, path: Path) -> "AnswerCache":
+    def load(cls, path: Path) -> "TextCache":
         answers: dict[str, str] = {}
         if path.exists():
             for line in path.read_text(encoding="utf-8").splitlines():
@@ -83,15 +86,16 @@ async def generate_answer(
     question: str,
     chunks: Sequence[RetrievedChunk],
     limiter: SlidingWindowRateLimiter,
-    cache: AnswerCache,
+    cache: TextCache,
     *,
     model: str,
     max_attempts: int,
+    history: Sequence[TurnLike] = (),
 ) -> GeneratedAnswer:
     if not chunks:
         return GeneratedAnswer(text=NO_CONTEXT_MESSAGE, cited_pages=set(), judge_sources=[])
 
-    prompt = build_user_prompt(question, chunks)
+    prompt = build_user_prompt(question, chunks, history)
     key = answer_cache_key(model, prompt)
     text = cache.get(key)
     from_cache = text is not None

@@ -23,10 +23,16 @@ export interface Source {
   page_number: number;
 }
 
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface ChatRequest {
   question: string;
   top_k?: number;
   document_id?: string | null;
+  history?: ChatTurn[];
 }
 
 export interface FieldError {

@@ -21,7 +21,7 @@ from app.services.rate_limiter import SlidingWindowRateLimiter
 from evals import paths
 from evals.config import EvalSettings
 from evals.embedding_cache import CachedEmbeddingProvider, EmbeddingCache
-from evals.generation import AnswerCache
+from evals.generation import TextCache
 from evals.judge import Judge, JudgeCache, OpenAICompatibleJSONClient
 from evals.metrics import regressions, summarize_answers, summarize_retrieval
 from evals.report import (
@@ -34,6 +34,7 @@ from evals.report import (
     save_baseline,
     write_run,
 )
+from evals.rewrite import CachedRewriter
 from evals.runner import (
     load_corpus,
     make_session_factory,
@@ -92,6 +93,18 @@ def _embedder(settings: Settings, cache: EmbeddingCache, offline: bool) -> Cache
     )
 
 
+def _rewriter(
+    settings: Settings, eval_settings: EvalSettings, cache: TextCache, offline: bool
+) -> CachedRewriter:
+    return CachedRewriter(
+        None if offline else get_completion_provider(settings),
+        cache,
+        SlidingWindowRateLimiter(eval_settings.eval_generation_rpm, _UNLIMITED_TOKENS),
+        model=_completion_model_id(settings),
+        max_attempts=eval_settings.eval_max_attempts,
+    )
+
+
 def cmd_validate(_args: argparse.Namespace) -> int:
     manifest, items = _load_inputs()
     counts: dict[str, int] = {}
@@ -104,10 +117,13 @@ def cmd_validate(_args: argparse.Namespace) -> int:
 
 async def cmd_retrieval(args: argparse.Namespace) -> int:
     settings = get_settings()
+    eval_settings = EvalSettings()
     manifest, items = _load_inputs()
-    engine, factory = make_session_factory(_database_url(args, EvalSettings()))
+    engine, factory = make_session_factory(_database_url(args, eval_settings))
     cache = EmbeddingCache.load(paths.EMBEDDING_CACHE_PATH)
     embedder = _embedder(settings, cache, args.offline)
+    rewrite_cache = TextCache.load(paths.REWRITE_CACHE_PATH)
+    rewriter = _rewriter(settings, eval_settings, rewrite_cache, args.offline)
     try:
         await require_migrated(factory)
         if args.rebuild:
@@ -115,15 +131,18 @@ async def cmd_retrieval(args: argparse.Namespace) -> int:
         chunk_counts = await load_corpus(
             factory, embedder, manifest, paths.CORPUS_DIR, settings, after_document=_saver(cache)
         )
-        records = await run_retrieval(factory, embedder, items)
+        records = await run_retrieval(factory, embedder, items, rewriter=rewriter)
     finally:
         if cache.dirty:
             cache.save()
+        if rewrite_cache.dirty:
+            rewrite_cache.save()
         await engine.dispose()
 
     summary = summarize_retrieval([record.score for record in records])
     print(render_table(summary, RETRIEVAL_COLUMNS))
     print(f"embeddings: {embedder.hits} cached, {embedder.misses} fetched; chunks: {chunk_counts}")
+    print(f"query rewrites: {rewriter.hits} cached, {rewriter.misses} fetched")
     run_path = write_run(
         paths.RUNS_DIR,
         "retrieval",
@@ -171,7 +190,9 @@ async def cmd_answers(args: argparse.Namespace) -> int:
     engine, factory = make_session_factory(_database_url(args, eval_settings))
     cache = EmbeddingCache.load(paths.EMBEDDING_CACHE_PATH)
     judge_cache = JudgeCache.load(paths.JUDGE_CACHE_PATH)
-    answer_cache = AnswerCache.load(paths.ANSWER_CACHE_PATH)
+    answer_cache = TextCache.load(paths.ANSWER_CACHE_PATH)
+    rewrite_cache = TextCache.load(paths.REWRITE_CACHE_PATH)
+    rewriter = _rewriter(settings, eval_settings, rewrite_cache, offline=False)
     generation_model = _completion_model_id(settings)
     embedder = _embedder(settings, cache, offline=False)
     judge = Judge(
@@ -193,6 +214,8 @@ async def cmd_answers(args: argparse.Namespace) -> int:
             judge_cache.save()
         if answer_cache.dirty:
             answer_cache.save()
+        if rewrite_cache.dirty:
+            rewrite_cache.save()
 
     done = 0
 
@@ -218,6 +241,7 @@ async def cmd_answers(args: argparse.Namespace) -> int:
             top_k=args.top_k,
             max_attempts=eval_settings.eval_max_attempts,
             after_item=after_item,
+            rewriter=rewriter,
         )
     except Exception as exc:
         signal = rate_limit_signal(exc)
