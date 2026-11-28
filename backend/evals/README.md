@@ -63,3 +63,11 @@ A full corpus embed costs ~242 Gemini embedding requests plus one per question; 
 allows roughly 1,000/day. Everything is cached in `cache/` (committed), so repeat runs and CI
 cost nothing. Any change to chunk text (chunk size, Phase 2 stitching/headings) misses the cache
 and needs one online run.
+
+Answer generation is much tighter: the Gemini free tier allows **20 `gemini-2.5-flash`
+generations per day**, so a full 60-question `answers` run takes three days. Generated answers
+are cached in `cache/answers.jsonl` (keyed by model, system prompt and user prompt) and judge
+verdicts in `cache/judge.jsonl`. When the daily cap is hit the command stops with exit code 3
+and says how far it got; rerun the same command after the reset and it resumes, spending quota
+only on unanswered questions. Changing the prompt, the retrieved chunks or the model misses
+the answer cache.

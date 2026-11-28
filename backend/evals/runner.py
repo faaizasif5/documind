@@ -27,7 +27,7 @@ from app.services.ingestion import PostgresChunkStore, ingest_document
 from app.services.providers.base import CompletionProvider, EmbeddingProvider
 from app.services.rate_limiter import SlidingWindowRateLimiter
 from app.services.retrieval import RetrievedChunk, retrieve_chunks
-from evals.generation import generate_answer
+from evals.generation import AnswerCache, generate_answer
 from evals.judge import Judge, JudgeVerdict
 from evals.metrics import (
     DEFAULT_KS,
@@ -196,7 +196,9 @@ async def run_answers(
     judge: Judge,
     items: Sequence[GoldenItem],
     generation_limiter: SlidingWindowRateLimiter,
+    answer_cache: AnswerCache,
     *,
+    generation_model: str,
     top_k: int,
     max_attempts: int,
     after_item: Callable[[], None] | None = None,
@@ -209,6 +211,8 @@ async def run_answers(
             item.question,
             chunks,
             generation_limiter,
+            answer_cache,
+            model=generation_model,
             max_attempts=max_attempts,
         )
         verdict = await judge.evaluate(
