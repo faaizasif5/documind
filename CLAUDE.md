@@ -69,6 +69,8 @@ python -m evals retrieval --offline --check-baseline   # what CI runs
 - **Never invent metrics.** Only measured numbers go in docs, README or V2_RESULTS.
 - **Free-tier quotas:**
   - Gemini embeddings count **each text** as one request: 100/min, about 1,000/day.
+  - Gemini chat (`gemini-2.5-flash`) allows only **20 generations/day**. Evals cache answers and
+    resume across days; the live app shares this cap.
   - Throttle proactively and honor the 429 `retryDelay`.
   - All retries go through `RateLimitedEmbeddingProvider`. Never retry outside the limiter.
 - **Evals run only against a local, disposable DB** (enforced unless `--allow-remote-db`).

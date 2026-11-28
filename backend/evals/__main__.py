@@ -21,6 +21,7 @@ from app.services.rate_limiter import SlidingWindowRateLimiter
 from evals import paths
 from evals.config import EvalSettings
 from evals.embedding_cache import CachedEmbeddingProvider, EmbeddingCache
+from evals.generation import AnswerCache
 from evals.judge import Judge, JudgeCache, OpenAICompatibleJSONClient
 from evals.metrics import regressions, summarize_answers, summarize_retrieval
 from evals.report import (
@@ -43,6 +44,7 @@ from evals.runner import (
     run_retrieval,
 )
 from evals.schema import CorpusManifest, GoldenItem, corpus_problems, load_golden, load_manifest
+from evals.throttle import rate_limit_signal
 
 logger = logging.getLogger("evals")
 
@@ -55,6 +57,15 @@ def _embedding_model_id(settings: Settings) -> str:
         settings.openai_embedding_model
         if settings.llm_provider == "openai"
         else settings.gemini_embedding_model
+    )
+    return f"{settings.llm_provider}:{model}"
+
+
+def _completion_model_id(settings: Settings) -> str:
+    model = (
+        settings.openai_completion_model
+        if settings.llm_provider == "openai"
+        else settings.gemini_completion_model
     )
     return f"{settings.llm_provider}:{model}"
 
@@ -164,6 +175,8 @@ async def cmd_answers(args: argparse.Namespace) -> int:
     engine, factory = make_session_factory(_database_url(args, eval_settings))
     cache = EmbeddingCache.load(paths.EMBEDDING_CACHE_PATH)
     judge_cache = JudgeCache.load(paths.JUDGE_CACHE_PATH)
+    answer_cache = AnswerCache.load(paths.ANSWER_CACHE_PATH)
+    generation_model = _completion_model_id(settings)
     embedder = _embedder(settings, cache, offline=False)
     judge = Judge(
         OpenAICompatibleJSONClient(
@@ -182,6 +195,15 @@ async def cmd_answers(args: argparse.Namespace) -> int:
             cache.save()
         if judge_cache.dirty:
             judge_cache.save()
+        if answer_cache.dirty:
+            answer_cache.save()
+
+    done = 0
+
+    def after_item() -> None:
+        nonlocal done
+        done += 1
+        save_caches()
 
     try:
         await require_migrated(factory)
@@ -195,10 +217,23 @@ async def cmd_answers(args: argparse.Namespace) -> int:
             judge,
             items,
             SlidingWindowRateLimiter(eval_settings.eval_generation_rpm, _UNLIMITED_TOKENS),
+            answer_cache,
+            generation_model=generation_model,
             top_k=args.top_k,
             max_attempts=eval_settings.eval_max_attempts,
-            after_item=save_caches,
+            after_item=after_item,
         )
+    except Exception as exc:
+        signal = rate_limit_signal(exc)
+        if signal is None or not signal.daily_quota:
+            raise
+        # Everything finished so far is cached; the next run resumes from here.
+        print(
+            f"Daily quota reached after {done} of {len(items)} questions. Answers and "
+            "verdicts so far are cached; rerun the same command after the quota resets.",
+            file=sys.stderr,
+        )
+        return 3
     finally:
         save_caches()
         await engine.dispose()
@@ -213,7 +248,7 @@ async def cmd_answers(args: argparse.Namespace) -> int:
         {
             "commit": git_commit(),
             "judge_model": eval_settings.eval_judge_model,
-            "generator": f"{settings.llm_provider}",
+            "generator": generation_model,
             "top_k": args.top_k,
             "summary": summary,
             "records": [asdict(record) for record in records],
