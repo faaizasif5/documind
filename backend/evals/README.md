@@ -71,3 +71,8 @@ verdicts in `cache/judge.jsonl`. When the daily cap is hit the command stops wit
 and says how far it got; rerun the same command after the reset and it resumes, spending quota
 only on unanswered questions. Changing the prompt, the retrieved chunks or the model misses
 the answer cache.
+
+Follow-up questions are rewritten into standalone queries before search, exactly as the app
+does (`app/services/query_rewrite.py`). Rewrites are cached in `cache/rewrites.jsonl`
+(committed), so the offline CI retrieval check needs no API key; `--offline` treats a missing
+rewrite as an error, like a missing embedding.

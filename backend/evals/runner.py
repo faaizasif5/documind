@@ -6,7 +6,7 @@ to load the corpus and ``retrieve_chunks`` (real pgvector/HNSW SQL) to search it
 
 import logging
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,7 +27,7 @@ from app.services.ingestion import PostgresChunkStore, ingest_document
 from app.services.providers.base import CompletionProvider, EmbeddingProvider
 from app.services.rate_limiter import SlidingWindowRateLimiter
 from app.services.retrieval import RetrievedChunk, retrieve_chunks
-from evals.generation import AnswerCache, generate_answer
+from evals.generation import TextCache, generate_answer
 from evals.judge import Judge, JudgeVerdict
 from evals.metrics import (
     DEFAULT_KS,
@@ -37,7 +37,7 @@ from evals.metrics import (
     citation_precision,
     score_retrieval,
 )
-from evals.schema import CorpusManifest, GoldenItem, sha256_file
+from evals.schema import CorpusManifest, GoldenItem, Turn, sha256_file
 
 logger = logging.getLogger(__name__)
 
@@ -151,9 +151,17 @@ def _pages(chunks: Sequence[RetrievedChunk]) -> list[PageRef]:
     return [(chunk.filename, chunk.page_number) for chunk in chunks]
 
 
+Rewriter = Callable[[str, Sequence[Turn]], Awaitable[str]]
+
+
+async def _as_asked(question: str, history: Sequence[Turn]) -> str:
+    return question
+
+
 @dataclass(slots=True)
 class RetrievalRecord:
     score: RetrievalScore
+    query: str
     expected: list[PageRef]
     retrieved: list[PageRef]
 
@@ -163,15 +171,18 @@ async def run_retrieval(
     provider: EmbeddingProvider,
     items: Sequence[GoldenItem],
     ks: Sequence[int] = DEFAULT_KS,
+    rewriter: Rewriter = _as_asked,
 ) -> list[RetrievalRecord]:
     records: list[RetrievalRecord] = []
     for item in items:
         if not item.answerable:
             continue
-        retrieved = _pages(await _retrieve(factory, provider, item.question, max(ks)))
+        query = await rewriter(item.question, item.history)
+        retrieved = _pages(await _retrieve(factory, provider, query, max(ks)))
         records.append(
             RetrievalRecord(
                 score=score_retrieval(item.id, item.tag, item.evidence_pages, retrieved, ks),
+                query=query,
                 expected=sorted(item.evidence_pages),
                 retrieved=retrieved,
             )
@@ -183,6 +194,7 @@ async def run_retrieval(
 class AnswerRecord:
     score: AnswerScore
     question: str
+    query: str
     answer: str
     cited: list[PageRef]
     retrieved: list[PageRef]
@@ -196,16 +208,18 @@ async def run_answers(
     judge: Judge,
     items: Sequence[GoldenItem],
     generation_limiter: SlidingWindowRateLimiter,
-    answer_cache: AnswerCache,
+    answer_cache: TextCache,
     *,
     generation_model: str,
     top_k: int,
     max_attempts: int,
     after_item: Callable[[], None] | None = None,
+    rewriter: Rewriter = _as_asked,
 ) -> list[AnswerRecord]:
     records: list[AnswerRecord] = []
     for item in items:
-        chunks = await _retrieve(factory, embedder, item.question, top_k)
+        query = await rewriter(item.question, item.history)
+        chunks = await _retrieve(factory, embedder, query, top_k)
         generated = await generate_answer(
             completion,
             item.question,
@@ -214,6 +228,7 @@ async def run_answers(
             answer_cache,
             model=generation_model,
             max_attempts=max_attempts,
+            history=item.history,
         )
         verdict = await judge.evaluate(
             question=item.question,
@@ -237,6 +252,7 @@ async def run_answers(
                     ),
                 ),
                 question=item.question,
+                query=query,
                 answer=generated.text,
                 cited=sorted(generated.cited_pages),
                 retrieved=_pages(chunks),

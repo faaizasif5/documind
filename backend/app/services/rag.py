@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Sequence
 
 from app.schemas.chat import Source
 from app.services.providers.base import CompletionProvider
+from app.services.query_rewrite import TurnLike, format_history
 from app.services.retrieval import RetrievedChunk
 
 logger = logging.getLogger(__name__)
@@ -53,8 +54,14 @@ def build_sources(chunks: Sequence[RetrievedChunk]) -> list[Source]:
     return sources
 
 
-def build_user_prompt(question: str, chunks: Sequence[RetrievedChunk]) -> str:
-    """Assemble the context + question prompt with numbered, cited source blocks."""
+def build_user_prompt(
+    question: str, chunks: Sequence[RetrievedChunk], history: Sequence[TurnLike] = ()
+) -> str:
+    """Assemble the context + question prompt with numbered, cited source blocks.
+
+    With ``history``, the recent conversation goes between the context and the question so
+    the model can resolve references; without it the prompt is unchanged.
+    """
     numbers = {
         (source.document_id, source.page_number): source.number for source in build_sources(chunks)
     }
@@ -64,7 +71,8 @@ def build_user_prompt(question: str, chunks: Sequence[RetrievedChunk]) -> str:
         for chunk in chunks
     ]
     context = "\n\n".join(blocks)
-    return f"Context:\n{context}\n\nQuestion: {question}"
+    conversation = f"Conversation so far:\n{format_history(history)}\n\n" if history else ""
+    return f"Context:\n{context}\n\n{conversation}Question: {question}"
 
 
 def parse_cited_numbers(answer: str) -> set[int]:
@@ -97,15 +105,22 @@ async def stream_chat_response(
     provider: CompletionProvider,
     question: str,
     chunks: Sequence[RetrievedChunk],
+    history: Sequence[TurnLike] = (),
+    search_query: str | None = None,
 ) -> AsyncIterator[str]:
-    """Yield Server-Sent Events: answer tokens, then citations, then a done marker."""
+    """Yield Server-Sent Events: answer tokens, then citations, then a done marker.
+
+    When retrieval used a rewritten query, a ``query`` event announces it first.
+    """
+    if search_query is not None and search_query != question:
+        yield _sse("query", {"text": search_query})
     if not chunks:
         yield _sse("token", {"text": NO_CONTEXT_MESSAGE})
         yield _sse("sources", [])
         yield _sse("done", {})
         return
 
-    user_prompt = build_user_prompt(question, chunks)
+    user_prompt = build_user_prompt(question, chunks, history)
     answer_parts: list[str] = []
     try:
         async for delta in provider.stream_completion(SYSTEM_PROMPT, user_prompt):
