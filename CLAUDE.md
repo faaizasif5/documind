@@ -17,8 +17,9 @@ citations (file and page).
 
 - **Backend** `backend/`: Python 3.12, FastAPI, SQLAlchemy 2 async + asyncpg, Alembic, pgvector
   (HNSW cosine, `vector(1536)`), PyMuPDF, LangChain text splitter (tiktoken).
-- **AI**: Gemini (embeddings `gemini-embedding-001` at 1536 dims, plus chat), OpenAI as an
-  alternative provider, and Groq (`openai/gpt-oss-120b`) as the eval judge.
+- **AI**: Gemini embeddings (`gemini-embedding-001` at 1536 dims, always). Chat via Groq
+  (`qwen/qwen3.8-27b`, default) or Gemini (`COMPLETION_PROVIDER`). Eval judge: Groq
+  `openai/gpt-oss-20b` (120b hit its 200K tokens/day cap). The `openai` SDK is only the client for Groq's compatible API.
 - **Frontend** `frontend/`: Next.js 14 App Router, TypeScript, Tailwind v3, shadcn/ui
   (pinned `shadcn@2.3.0`), TanStack Query, Supabase SSR auth.
 - **Hosting**: Supabase (Postgres + Google SSO), Render (API), Vercel (web). The budget is **$0**,
@@ -33,7 +34,7 @@ backend/app/
   db/ models/ schemas/    async session, ORM (Document, Chunk, IngestionJob), Pydantic
   services/               pdf_extraction, chunking, ingestion, job_queue, rate_limiter,
                           retrieval, rag
-  services/providers/     base (Protocols), factory, gemini, openai, rate_limited wrapper
+  services/providers/     base (Protocols), factory, gemini, groq, rate_limited wrapper
   workers/                ingestion_worker (Postgres queue consumer)
   api/routes/             health, documents, chat (SSE)
 backend/alembic/          migrations 0001–0003
@@ -69,8 +70,8 @@ python -m evals retrieval --offline --check-baseline   # what CI runs
 - **Never invent metrics.** Only measured numbers go in docs, README or V2_RESULTS.
 - **Free-tier quotas:**
   - Gemini embeddings count **each text** as one request: 100/min, about 1,000/day.
-  - Gemini chat (`gemini-2.5-flash`) allows only **20 generations/day**. Evals cache answers and
-    resume across days; the live app shares this cap.
+  - Gemini chat (`gemini-2.5-flash`) allows only **20 generations/day**, which is why chat
+    moved to Groq. Evals cache answers and resume across days if a cap is hit.
   - Throttle proactively and honor the 429 `retryDelay`.
   - All retries go through `RateLimitedEmbeddingProvider`. Never retry outside the limiter.
 - **Evals run only against a local, disposable DB** (enforced unless `--allow-remote-db`).

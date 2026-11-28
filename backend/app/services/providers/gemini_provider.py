@@ -56,7 +56,7 @@ class GeminiEmbeddingProvider:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+            raise ValueError("GEMINI_API_KEY is required (embeddings always use Gemini)")
         self._client = genai.Client(api_key=settings.gemini_api_key)
         self._model = settings.gemini_embedding_model
         self._dim = settings.embedding_dim
@@ -103,7 +103,7 @@ class GeminiCompletionProvider:
 
     def __init__(self, settings: Settings) -> None:
         if not settings.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+            raise ValueError("GEMINI_API_KEY is required when COMPLETION_PROVIDER=gemini")
         self._client = genai.Client(api_key=settings.gemini_api_key)
         self._model = settings.gemini_completion_model
 

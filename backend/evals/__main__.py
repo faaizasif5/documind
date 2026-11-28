@@ -53,21 +53,17 @@ _DEFAULT_TOLERANCE = 0.02
 
 
 def _embedding_model_id(settings: Settings) -> str:
-    model = (
-        settings.openai_embedding_model
-        if settings.llm_provider == "openai"
-        else settings.gemini_embedding_model
-    )
-    return f"{settings.llm_provider}:{model}"
+    # Part of the embedding cache key: keep the "gemini:<model>" format stable.
+    return f"gemini:{settings.gemini_embedding_model}"
 
 
 def _completion_model_id(settings: Settings) -> str:
     model = (
-        settings.openai_completion_model
-        if settings.llm_provider == "openai"
-        else settings.gemini_completion_model
+        settings.gemini_completion_model
+        if settings.completion_provider == "gemini"
+        else settings.groq_completion_model
     )
-    return f"{settings.llm_provider}:{model}"
+    return f"{settings.completion_provider}:{model}"
 
 
 def _load_inputs() -> tuple[CorpusManifest, list[GoldenItem]]:

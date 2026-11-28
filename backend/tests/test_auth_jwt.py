@@ -18,7 +18,6 @@ def _settings(**overrides: Any) -> Settings:
         "database_url": "postgresql+asyncpg://u:p@localhost:5432/db",
         "supabase_url": "https://example.supabase.co",
         "supabase_jwt_secret": "test-supabase-jwt-secret",
-        "llm_provider": "gemini",
         "gemini_api_key": "test-gemini-key",
     }
     base.update(overrides)

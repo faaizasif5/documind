@@ -21,6 +21,8 @@ scale over answered questions. Citation precision uses explicit `[Source N]` mar
 
 | Date | Label | Commit | n | Faithfulness | Correctness | Citation precision | Refusal rate (unanswerable) | False refusal rate | Uncited answers | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-28 | baseline | `f46ae91+dirty` | 60 | 4.800 | 4.080 | 0.748 | 0.400 | 0.000 | 0 | superseded: judge gpt-oss-120b, rubric v1 under-counted refusals |
+| 2026-11-28 | baseline | `f46ae91+dirty` | 60 | 4.667 | 4.208 | 0.748 | 0.800 | 0.040 | 0 | judge gpt-oss-20b, rubric v2 (current baseline). Manual read: the 2 unrefused unanswerables (un-04, un-10) do decline ("no mention of…"); judge mislabel |
 <!-- answer-rows -->
 
 ## Per-tag breakdowns
@@ -35,5 +37,29 @@ scale over answered questions. Citation precision uses explicit `[Source N]` mar
 | follow_up | 7 | 0.286 | 0.286 | 0.429 | 0.571 | 0.330 |
 | lookup | 15 | 0.733 | 1.000 | 1.000 | 1.000 | 0.867 |
 | multi_hop | 10 | 0.300 | 0.500 | 0.650 | 0.700 | 0.742 |
+
+### answers: baseline (`f46ae91+dirty`, 2026-11-28) — superseded (judge gpt-oss-120b, rubric v1)
+
+| Group | n | faithfulness | correctness | citation_precision | refusal_rate | false_refusal_rate | uncited_answers |
+|---|---|---|---|---|---|---|---|
+| overall | 60 | 4.800 | 4.080 | 0.748 | 0.400 | 0.000 | 0 |
+| cross_page | 8 | 5.000 | 4.750 | 0.800 | – | 0.000 | 0 |
+| exact_term | 10 | 5.000 | 5.000 | 0.950 | – | 0.000 | 0 |
+| follow_up | 7 | 5.000 | 2.857 | 0.250 | – | 0.000 | 0 |
+| lookup | 15 | 5.000 | 4.867 | 0.922 | – | 0.000 | 0 |
+| multi_hop | 10 | 4.000 | 2.300 | 0.590 | – | 0.000 | 0 |
+| unanswerable | 10 | – | – | – | 0.400 | – | 0 |
+
+### answers: baseline (`f46ae91+dirty`, 2026-11-28) — current (judge gpt-oss-20b, rubric v2)
+
+| Group | n | faithfulness | correctness | citation_precision | refusal_rate | false_refusal_rate | uncited_answers |
+|---|---|---|---|---|---|---|---|
+| overall | 60 | 4.667 | 4.208 | 0.748 | 0.800 | 0.040 | 0 |
+| cross_page | 8 | 5.000 | 4.750 | 0.800 | – | 0.000 | 0 |
+| exact_term | 10 | 5.000 | 5.000 | 0.950 | – | 0.000 | 0 |
+| follow_up | 7 | 5.000 | 3.000 | 0.250 | – | 0.000 | 0 |
+| lookup | 15 | 4.867 | 4.733 | 0.922 | – | 0.000 | 0 |
+| multi_hop | 10 | 3.250 | 2.750 | 0.550 | – | 0.200 | 0 |
+| unanswerable | 10 | – | – | – | 0.800 | – | 0 |
 
 <!-- breakdowns -->

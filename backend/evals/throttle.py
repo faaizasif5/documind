@@ -12,6 +12,7 @@ from google.genai import errors as genai_errors
 
 from app.core.exceptions import ProviderRateLimitError
 from app.services.providers.gemini_provider import is_daily_quota, parse_retry_delay
+from app.services.providers.groq_provider import is_daily_limit, retry_after_seconds
 from app.services.rate_limiter import SlidingWindowRateLimiter
 
 _FALLBACK_BACKOFF_SECONDS = 2.0
@@ -31,12 +32,8 @@ def rate_limit_signal(exc: BaseException) -> RateLimitSignal | None:
     if isinstance(exc, genai_errors.APIError) and exc.code == 429:
         return RateLimitSignal(parse_retry_delay(exc), is_daily_quota(exc))
     if isinstance(exc, openai.RateLimitError):
-        header = exc.response.headers.get("retry-after")
-        try:
-            delay = float(header) if header is not None else None
-        except ValueError:
-            delay = None
-        return RateLimitSignal(delay, daily_quota=False)
+        # Groq's per-day limits (RPD/TPD) roll over a 24 h window: waiting minutes won't help.
+        return RateLimitSignal(retry_after_seconds(exc), daily_quota=is_daily_limit(exc))
     return None
 
 

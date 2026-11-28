@@ -1,1 +1,1 @@
-"""Pluggable AI providers (OpenAI / Gemini) behind a common interface."""
+"""AI providers behind common Protocols: Gemini embeddings, Groq or Gemini chat."""

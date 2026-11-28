@@ -6,10 +6,7 @@ from app.services.providers.gemini_provider import (
     GeminiCompletionProvider,
     GeminiEmbeddingProvider,
 )
-from app.services.providers.openai_provider import (
-    OpenAICompletionProvider,
-    OpenAIEmbeddingProvider,
-)
+from app.services.providers.groq_provider import GroqCompletionProvider
 from app.services.providers.rate_limited import RateLimitedEmbeddingProvider
 from app.services.rate_limiter import SlidingWindowRateLimiter
 
@@ -21,9 +18,7 @@ def get_embedding_rate_limiter(rpm: int, tpm: int) -> SlidingWindowRateLimiter:
 
 
 def build_raw_embedding_provider(settings: Settings) -> EmbeddingProvider:
-    """Unthrottled provider selected by ``settings.llm_provider``."""
-    if settings.llm_provider == "openai":
-        return OpenAIEmbeddingProvider(settings)
+    """Unthrottled Gemini embedding provider (embeddings always use Gemini)."""
     return GeminiEmbeddingProvider(settings)
 
 
@@ -39,8 +34,8 @@ def get_embedding_provider(settings: Settings | None = None) -> RateLimitedEmbed
 
 
 def get_completion_provider(settings: Settings | None = None) -> CompletionProvider:
-    """Return the completion provider selected by ``settings.llm_provider``."""
+    """Return the chat provider selected by ``settings.completion_provider``."""
     settings = settings or get_settings()
-    if settings.llm_provider == "openai":
-        return OpenAICompletionProvider(settings)
-    return GeminiCompletionProvider(settings)
+    if settings.completion_provider == "gemini":
+        return GeminiCompletionProvider(settings)
+    return GroqCompletionProvider(settings)

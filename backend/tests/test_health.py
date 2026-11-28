@@ -6,7 +6,7 @@ from pytest import MonkeyPatch
 
 def test_health_check_returns_ok(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost/test")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("GROQ_API_KEY", "test-api-key")
 
     config = importlib.import_module("app.core.config")
     config.get_settings.cache_clear()
