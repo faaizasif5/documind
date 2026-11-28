@@ -17,7 +17,7 @@ from app.services.rate_limiter import SlidingWindowRateLimiter
 from evals.throttle import call_with_limits
 
 # Bump when the rubric or prompt changes: it is part of every cache key.
-JUDGE_PROMPT_VERSION = "2026-11-27.v1"
+JUDGE_PROMPT_VERSION = "2026-11-28.v2"
 
 JUDGE_SYSTEM_PROMPT = """\
 You grade answers produced by a document question-answering system.
@@ -28,8 +28,10 @@ Return ONLY a JSON object with exactly these keys:
 {"refused": boolean, "faithfulness": integer 1-5, "correctness": integer 1-5 or null,
  "rationale": string (one or two sentences)}
 
-refused: true if the answer declines, or says the documents do not contain the
-answer, instead of answering the question.
+refused: true if the answer's bottom line is that it cannot answer, or that the documents
+  do not contain the requested information, even when it goes on to summarize related
+  material from the sources. false if it gives an answer to the question, including a
+  partial answer that notes some details are missing.
 faithfulness: are the answer's factual claims supported by the sources?
   5 = every claim is supported; 3 = some claims unsupported; 1 = mostly unsupported or
   invented. An answer that makes no factual claims (e.g. a refusal) scores 5.

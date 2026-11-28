@@ -1,43 +1,53 @@
 import pytest
 
 from app.core.config import Settings
-from app.services.providers.factory import get_embedding_provider
-from app.services.providers.gemini_provider import GeminiEmbeddingProvider
-from app.services.providers.openai_provider import OpenAIEmbeddingProvider
+from app.services.providers.factory import get_completion_provider, get_embedding_provider
+from app.services.providers.gemini_provider import (
+    GeminiCompletionProvider,
+    GeminiEmbeddingProvider,
+)
+from app.services.providers.groq_provider import GroqCompletionProvider
 from app.services.providers.rate_limited import RateLimitedEmbeddingProvider
 
 
 def _settings(**overrides: object) -> Settings:
     base: dict[str, object] = {
         "database_url": "postgresql+asyncpg://u:p@localhost:5432/db",
-        "llm_provider": "gemini",
         "gemini_api_key": "test-gemini-key",
-        "openai_api_key": "test-openai-key",
+        "groq_api_key": "test-groq-key",
     }
     base.update(overrides)
     return Settings(**base)  # type: ignore[arg-type]
 
 
-def test_factory_returns_gemini_provider() -> None:
-    provider = get_embedding_provider(_settings(llm_provider="gemini"))
+def test_embeddings_always_use_gemini() -> None:
+    provider = get_embedding_provider(_settings(completion_provider="groq"))
     assert isinstance(provider, RateLimitedEmbeddingProvider)
     assert isinstance(provider.inner, GeminiEmbeddingProvider)
 
 
-def test_factory_returns_openai_provider() -> None:
-    provider = get_embedding_provider(_settings(llm_provider="openai"))
-    assert isinstance(provider, RateLimitedEmbeddingProvider)
-    assert isinstance(provider.inner, OpenAIEmbeddingProvider)
-
-
-def test_gemini_requires_key() -> None:
+def test_gemini_embeddings_require_key() -> None:
     with pytest.raises(ValueError, match="GEMINI_API_KEY"):
-        get_embedding_provider(_settings(llm_provider="gemini", gemini_api_key=None))
+        get_embedding_provider(_settings(gemini_api_key=None))
 
 
-def test_openai_requires_key() -> None:
-    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
-        get_embedding_provider(_settings(llm_provider="openai", openai_api_key=None))
+def test_chat_defaults_to_groq() -> None:
+    assert isinstance(get_completion_provider(_settings()), GroqCompletionProvider)
+
+
+def test_chat_can_use_gemini() -> None:
+    provider = get_completion_provider(_settings(completion_provider="gemini"))
+    assert isinstance(provider, GeminiCompletionProvider)
+
+
+def test_groq_chat_requires_key() -> None:
+    with pytest.raises(ValueError, match="GROQ_API_KEY"):
+        get_completion_provider(_settings(groq_api_key=None))
+
+
+def test_openai_is_no_longer_a_provider() -> None:
+    with pytest.raises(ValueError):
+        _settings(completion_provider="openai")
 
 
 def test_providers_share_one_process_wide_limiter() -> None:

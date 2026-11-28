@@ -14,8 +14,8 @@ concurrency:
 env:
   DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
   SUPABASE_URL: https://ci.invalid
-  LLM_PROVIDER: gemini
   GEMINI_API_KEY: ci-unused
+  GROQ_API_KEY: ci-unused
   INGESTION_WORKER_ENABLED: "false"
 
 jobs:

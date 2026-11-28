@@ -13,7 +13,7 @@ they are generated and include interactive citations to the source file and page
 - PDF upload transfer progress followed by background processing status
 - Per-page, token-aware chunking with 1536-dimensional embeddings
 - PostgreSQL/pgvector retrieval using an HNSW cosine index
-- Gemini or OpenAI selected through configuration behind one provider interface
+- Gemini embeddings and Groq (or Gemini) chat behind one provider interface
 - Markdown answers streamed over POST-based Server-Sent Events
 - Numbered, source-filtered citations with grouped citation support
 - Structured API errors and fully async database/provider I/O
@@ -35,8 +35,8 @@ model cited.
 - **Frontend:** Next.js 14, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
 - **Backend:** FastAPI, Pydantic v2, SQLAlchemy 2.0 async, asyncpg, Alembic
 - **Data and auth:** Supabase PostgreSQL, pgvector, Supabase Auth
-- **AI:** Gemini (`gemini-2.5-flash`, `gemini-embedding-001`) or OpenAI
-  (`gpt-4o-mini`, `text-embedding-3-small`)
+- **AI:** Gemini `gemini-embedding-001` for embeddings; Groq `qwen/qwen3.8-27b` for chat
+  (Gemini `gemini-2.5-flash` as a configurable alternative)
 - **Hosting:** Vercel frontend and Render API
 - **Quality:** Ruff, strict mypy, pytest, ESLint, TypeScript, Next.js production build
 
@@ -47,7 +47,7 @@ model cited.
 - Python 3.12+
 - Node.js 20+
 - A Supabase project (Postgres with pgvector + Google Auth)
-- A Gemini API key or OpenAI API key
+- A Gemini API key (embeddings) and a Groq API key (chat)
 
 ### Backend
 

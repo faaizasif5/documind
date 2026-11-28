@@ -101,12 +101,12 @@ async def test_correctness_dropped_without_reference(tmp_path: Path) -> None:
     assert verdict.correctness is None
 
 
-def _rate_limit_error(retry_after: str | None) -> openai.RateLimitError:
+def _rate_limit_error(retry_after: str | None, message: str = "slow down") -> openai.RateLimitError:
     headers = {"retry-after": retry_after} if retry_after else {}
     # openai>=3 types this as httpx2.Response, older versions as httpx.Response; both accept
     # an httpx.Response at runtime, so keep the test independent of the SDK's HTTP library.
     response: Any = httpx.Response(429, headers=headers, request=httpx.Request("POST", "https://x"))
-    return openai.RateLimitError("slow down", response=response, body=None)
+    return openai.RateLimitError(message, response=response, body=None)
 
 
 async def test_429_pauses_for_retry_after_then_succeeds(tmp_path: Path) -> None:
@@ -123,6 +123,18 @@ def test_rate_limit_signal_ignores_other_errors() -> None:
     assert rate_limit_signal(ValueError("x")) is None
     signal = rate_limit_signal(_rate_limit_error(None))
     assert signal is not None and signal.retry_after_seconds is None
+
+
+async def test_groq_daily_token_limit_stops_without_retrying(tmp_path: Path) -> None:
+    tpd = _rate_limit_error("252", "Rate limit reached ... on tokens per day (TPD): Limit 200000")
+    client = _Client([tpd, _VALID])
+
+    with pytest.raises(openai.RateLimitError):
+        await _evaluate(_judge(client, JudgeCache(tmp_path / "j.jsonl")))
+
+    assert client.calls == 1
+    signal = rate_limit_signal(tpd)
+    assert signal is not None and signal.daily_quota
 
 
 def test_cache_key_changes_with_prompt_content() -> None:

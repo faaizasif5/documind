@@ -22,8 +22,11 @@ class EvalSettings(BaseSettings):
     groq_api_key: str | None = None
     eval_judge_base_url: str = "https://api.groq.com/openai/v1"
     # Groq retires models (llama-3.3-70b-versatile is gone); list them via GET {base_url}/models.
-    eval_judge_model: str = "openai/gpt-oss-120b"
+    # gpt-oss-20b, not 120b: 120b allows 200K tokens/day on the free tier and one full answers
+    # run needs ~180K. Different family from the qwen generator, so it still judges impartially.
+    eval_judge_model: str = "openai/gpt-oss-20b"
     # Conservative defaults; the providers' 429 retry hints take over if these are too high.
-    eval_judge_rpm: int = 20
-    eval_generation_rpm: int = 5
+    # Groq allows 8,000 tokens/min per model and a judge call is ~3K tokens, so ~2/min fits.
+    eval_judge_rpm: int = 2
+    eval_generation_rpm: int = 15
     eval_max_attempts: int = 5

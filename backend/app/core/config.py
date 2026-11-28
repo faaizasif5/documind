@@ -4,7 +4,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-LLMProvider = Literal["openai", "gemini"]
+# Embeddings are always Gemini; only the chat model is selectable.
+CompletionProviderName = Literal["groq", "gemini"]
 
 
 class Settings(BaseSettings):
@@ -33,17 +34,22 @@ class Settings(BaseSettings):
     # signing key is ECC/RSA; keep only as a temporary fallback for old tokens.
     supabase_jwt_secret: str | None = None
 
-    # AI provider selection. Keys are validated lazily when a provider is built,
-    # so the app boots without a key for work that doesn't call the AI.
-    llm_provider: LLMProvider = "gemini"
-    openai_api_key: str | None = None
+    # AI providers. Keys are validated lazily when a provider is built, so the app boots
+    # without a key for work that doesn't call the AI.
+    # Gemini: embeddings (always) and the optional chat fallback.
     gemini_api_key: str | None = None
-    # Groq (OpenAI-compatible): eval judge now; completion fallback provider in v2 Phase 3.
-    groq_api_key: str | None = None
-    openai_embedding_model: str = "text-embedding-3-small"
     gemini_embedding_model: str = "gemini-embedding-001"
-    openai_completion_model: str = "gpt-4o-mini"
     gemini_completion_model: str = "gemini-2.5-flash"
+    # Chat answers. Groq's free tier allows far more daily requests than Gemini's (20/day).
+    completion_provider: CompletionProviderName = "groq"
+    # Groq (OpenAI-compatible API): chat answers, and the eval judge.
+    groq_api_key: str | None = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    # Groq retires models; list the current ones via GET {groq_base_url}/models.
+    groq_completion_model: str = "qwen/qwen3.8-27b"
+    # Qwen3 models "think" before answering; "hidden" keeps that text out of the answer.
+    # Set to empty for models that reject the parameter.
+    groq_reasoning_format: str | None = "hidden"
 
     embedding_dim: int = 1536
     # Chunks per embed call. Smaller batches give finer progress and smaller resume gaps;
